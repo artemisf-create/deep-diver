@@ -486,13 +486,24 @@ function update() {
   const rightBound = camXpx + VP.w - player.hw - 2;
   if (player.x < leftBound) {
     player.x = leftBound;
-    // Если камера затолкала в стену — ищем ближайший AIR тайл по вертикали
+    player.vx = Math.max(player.vx, 0);
+    // Если камера затолкала в стену — ищем ближайший AIR тайл
     if (collidesWall(player.x, player.y, player.hw, player.hh)) {
-      const col = Math.floor(player.x / T);
-      const row = Math.floor(player.y / T);
-      for (let d = 1; d < ROWS; d++) {
-        if (grid[(col) % POOL][clamp(row + d, 0, ROWS-1)] === 0) { player.y = (row + d) * T + T/2; break; }
-        if (grid[(col) % POOL][clamp(row - d, 0, ROWS-1)] === 0) { player.y = (row - d) * T + T/2; break; }
+      const baseCol = Math.floor(player.x / T);
+      const baseRow = Math.floor(player.y / T);
+      let found = false;
+      outer: for (let r = 0; r <= 6; r++) {
+        for (let dc = 0; dc <= 3; dc++) {
+          for (const dr of (r === 0 ? [0] : [r, -r])) {
+            const c = baseCol + dc;
+            const row = clamp(baseRow + dr, 0, ROWS - 1);
+            if (grid[c % POOL][row] === 0) {
+              player.x = c * T + T / 2;
+              player.y = row * T + T / 2;
+              found = true; break outer;
+            }
+          }
+        }
       }
     }
   }
