@@ -484,7 +484,18 @@ function update() {
   // Left wall = camera left edge (auto-scroll pushes you)
   const leftBound  = camXpx + player.hw + 2;
   const rightBound = camXpx + VP.w - player.hw - 2;
-  if (player.x < leftBound)  player.x = leftBound;
+  if (player.x < leftBound) {
+    player.x = leftBound;
+    // Если камера затолкала в стену — ищем ближайший AIR тайл по вертикали
+    if (collidesWall(player.x, player.y, player.hw, player.hh)) {
+      const col = Math.floor(player.x / T);
+      const row = Math.floor(player.y / T);
+      for (let d = 1; d < ROWS; d++) {
+        if (grid[(col) % POOL][clamp(row + d, 0, ROWS-1)] === 0) { player.y = (row + d) * T + T/2; break; }
+        if (grid[(col) % POOL][clamp(row - d, 0, ROWS-1)] === 0) { player.y = (row - d) * T + T/2; break; }
+      }
+    }
+  }
   if (player.x > rightBound) player.x = rightBound;
 
   if (player.invincible > 0) player.invincible--;
