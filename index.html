@@ -25,9 +25,117 @@
       height: 100vh;
     }
   </style>
+  <style>
+    #nameInput {
+      display: none;
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      background: rgba(0,20,40,0.97);
+      border: 2px solid #55aaff;
+      border-radius: 14px;
+      padding: 22px 28px;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(80,180,255,0.4);
+    }
+    #nameInput p {
+      color: #80dfff;
+      font: bold 18px sans-serif;
+      margin-bottom: 12px;
+    }
+    #nameInput input {
+      background: rgba(255,255,255,0.1);
+      border: 2px solid #55aaff;
+      border-radius: 8px;
+      color: #fff;
+      font: bold 20px sans-serif;
+      padding: 8px 14px;
+      width: 220px;
+      text-align: center;
+      outline: none;
+    }
+    #nameInput button {
+      display: block;
+      margin: 12px auto 0;
+      background: rgba(80,160,255,0.35);
+      border: 2px solid #55aaff;
+      border-radius: 8px;
+      color: #fff;
+      font: bold 16px sans-serif;
+      padding: 8px 32px;
+      cursor: pointer;
+    }
+    #nameInput button:hover { background: rgba(80,160,255,0.6); }
+
+    #friendsPanel {
+      display: none;
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      background: rgba(0,15,35,0.98);
+      border: 2px solid #55aaff;
+      border-radius: 16px;
+      padding: 20px 24px;
+      width: min(420px, 92vw);
+      box-shadow: 0 0 40px rgba(80,180,255,0.35);
+      color: #fff;
+      font-family: sans-serif;
+    }
+    #friendsPanel h2 { color:#80dfff; font-size:20px; margin-bottom:14px; text-align:center; }
+    #friendsList { max-height: 200px; overflow-y:auto; margin-bottom:14px; }
+    #friendsList .fr {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:7px 10px; border-radius:8px; margin-bottom:6px;
+      background:rgba(255,255,255,.07);
+    }
+    #friendsList .fr .fname { font-weight:bold; color:#aaddff; }
+    #friendsList .fr .fscore { color:#ffe680; font-weight:bold; }
+    #friendsList .fr .fdel { cursor:pointer; color:#ff6666; font-size:18px; margin-left:10px; }
+    #friendsList .empty { color:rgba(255,255,255,.4); text-align:center; padding:16px 0; font-size:14px; }
+    .fp-row { display:flex; gap:8px; margin-bottom:10px; }
+    .fp-row input {
+      flex:1; background:rgba(255,255,255,.1); border:2px solid #55aaff;
+      border-radius:8px; color:#fff; font-size:14px; padding:7px 10px; outline:none;
+    }
+    .fp-row button, #friendsPanel > button {
+      background:rgba(80,160,255,.35); border:2px solid #55aaff;
+      border-radius:8px; color:#fff; font:bold 14px sans-serif;
+      padding:7px 14px; cursor:pointer; white-space:nowrap;
+    }
+    .fp-row button:hover, #friendsPanel > button:hover { background:rgba(80,160,255,.6); }
+    #myCode {
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2);
+      border-radius:8px; padding:8px 12px; font-size:12px; color:#aaddff;
+      word-break:break-all; margin-bottom:10px; cursor:pointer; text-align:center;
+    }
+    #myCode:hover { background:rgba(255,255,255,.15); }
+    .fp-hint { font-size:11px; color:rgba(255,255,255,.4); text-align:center; margin-bottom:10px; }
+    #friendsClose { display:block; width:100%; margin-top:4px; }
+    #fpMsg { font-size:13px; color:#ff8888; text-align:center; min-height:18px; margin-bottom:4px; }
+  </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="friendsPanel">
+  <h2 id="fpTitle">👥 Friends</h2>
+  <div id="friendsList"></div>
+  <p id="fpMyCode" style="color:#80dfff;font-size:13px;margin-bottom:6px;text-align:center"></p>
+  <div id="myCode" title="Click to copy">…</div>
+  <p class="fp-hint" id="fpHint">Share this code with friends. Click to copy.</p>
+  <div class="fp-row">
+    <input id="friendCodeInput" type="text" placeholder="Paste friend's code…" autocomplete="off">
+    <button id="addFriendBtn">Add</button>
+  </div>
+  <p id="fpMsg"></p>
+  <button id="friendsClose">Close</button>
+</div>
+<div id="nameInput">
+  <p id="nameInputLabel">Enter your name:</p>
+  <input id="nameField" type="text" maxlength="16" autocomplete="off" spellcheck="false">
+  <button id="nameConfirm">OK</button>
+</div>
 <script>
 // РџРѕР»РёС„РёР» roundRect РґР»СЏ СЃС‚Р°СЂС‹С… Safari (iPad / iPhone РґРѕ iOS 15.4)
 if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -185,14 +293,14 @@ function generateUntil(targetCol) {
     }
 
     // Shark — spawns more often as difficulty rises
-    const sharkInterval = Math.round(30 - diff * 18);  // 30 в†’ 12
+    const sharkInterval = Math.round(30 - diff * 18);  // 30 в†' 12
     if (genCol > 50 && genCol % sharkInterval === 0 && Math.random() < 0.6 + diff * 0.3) {
       const r = pick();
       if (!dec[r]) dec[r] = { type: 'shark', vy: (Math.random() < 0.5 ? 1 : -1) * (0.5 + diff * 1.2), py: r * T + T / 2, px: genCol * T + T / 2, vx: 0, aggroed: false };
     }
 
     // Jellyfish — spawns more with difficulty
-    const jellyInterval = Math.round(28 - diff * 15);  // 28 в†’ 13
+    const jellyInterval = Math.round(28 - diff * 15);  // 28 в†' 13
     if (genCol > 70 && genCol % jellyInterval === 0 && Math.random() < 0.55 + diff * 0.35) {
       const r = pick();
       if (!dec[r]) dec[r] = { type: 'jelly', phase: Math.random() * Math.PI * 2, py: r * T + T / 2, px: genCol * T + T / 2, vx: 0, vy: 0, aggroed: false };
@@ -252,6 +360,204 @@ function loadProgress() {
   } catch(e) {}
 }
 loadProgress();
+
+// ─── Nickname ────────────────────────────────────────────────────────────────
+let playerName = localStorage.getItem('deepdiver_name') || '';
+
+const nameInputDiv   = document.getElementById('nameInput');
+const nameInputLabel = document.getElementById('nameInputLabel');
+const nameField      = document.getElementById('nameField');
+const nameConfirm    = document.getElementById('nameConfirm');
+
+function openNameInput() {
+  nameInputLabel.textContent = lang === 'ru' ? 'Введи никнейм:' : 'Enter your name:';
+  nameField.value = playerName;
+  nameInputDiv.style.display = 'block';
+  nameField.focus();
+  nameField.select();
+}
+function closeNameInput() {
+  const val = nameField.value.trim();
+  if (val) { playerName = val; localStorage.setItem('deepdiver_name', val); }
+  nameInputDiv.style.display = 'none';
+}
+nameConfirm.addEventListener('click', closeNameInput);
+nameField.addEventListener('keydown', e => { if (e.key === 'Enter') closeNameInput(); e.stopPropagation(); });
+nameField.addEventListener('keyup',   e => e.stopPropagation());
+nameField.addEventListener('mousedown', e => e.stopPropagation());
+nameField.addEventListener('touchstart', e => e.stopPropagation());
+
+// ─── Friends ─────────────────────────────────────────────────────────────────
+// playerId — уникальный ID игрока
+let playerId = localStorage.getItem('deepdiver_pid');
+if (!playerId) {
+  playerId = 'p' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+  localStorage.setItem('deepdiver_pid', playerId);
+}
+
+let friends = JSON.parse(localStorage.getItem('deepdiver_friends') || '[]');
+// friends = [{id, name, score}]
+
+function saveFriends() { localStorage.setItem('deepdiver_friends', JSON.stringify(friends)); }
+
+function makeMyCode() {
+  // Код = base64({id, name, score})
+  const obj = { id: playerId, n: playerName || '???', s: hiScore };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+}
+
+function parseCode(code) {
+  try {
+    return JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+  } catch(e) { return null; }
+}
+
+const fpPanel      = document.getElementById('friendsPanel');
+const fpTitle      = document.getElementById('fpTitle');
+const fpList       = document.getElementById('friendsList');
+const fpMyCodeLbl  = document.getElementById('fpMyCode');
+const myCodeDiv    = document.getElementById('myCode');
+const fpHint       = document.getElementById('fpHint');
+const friendCodeIn = document.getElementById('friendCodeInput');
+const addFriendBtn = document.getElementById('addFriendBtn');
+const friendsClose = document.getElementById('friendsClose');
+const fpMsg        = document.getElementById('fpMsg');
+
+function fpTexts() {
+  const ru = lang === 'ru';
+  fpTitle.textContent     = ru ? '👥 Друзья' : '👥 Friends';
+  fpMyCodeLbl.textContent = ru ? 'Твой код (поделись с другом):' : 'Your code (share with a friend):';
+  fpHint.textContent      = ru ? 'Нажми чтобы скопировать.' : 'Click to copy.';
+  friendCodeIn.placeholder= ru ? 'Вставь код друга…' : "Paste friend's code…";
+  addFriendBtn.textContent= ru ? 'Добавить' : 'Add';
+  friendsClose.textContent= ru ? 'Закрыть' : 'Close';
+}
+
+function renderFriendsList() {
+  if (!friends.length) {
+    fpList.innerHTML = `<div class="empty">${lang==='ru' ? 'Пока нет друзей' : 'No friends yet'}</div>`;
+    return;
+  }
+  const sorted = [...friends].sort((a,b) => b.s - a.s);
+  fpList.innerHTML = sorted.map((f,i) =>
+    `<div class="fr">
+      <span style="color:rgba(255,255,255,.5);margin-right:8px">${i+1}.</span>
+      <span class="fname">🤿 ${f.n}</span>
+      <span class="fscore" style="margin-left:auto">◆ ${f.s}</span>
+      <span class="fdel" data-id="${f.id}" title="Remove">✕</span>
+    </div>`
+  ).join('');
+  fpList.querySelectorAll('.fdel').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      friends = friends.filter(f => f.id !== id);
+      saveFriends(); renderFriendsList();
+    });
+  });
+}
+
+function openFriendsPanel() {
+  fpTexts();
+  myCodeDiv.textContent = makeMyCode();
+  fpMsg.textContent = '';
+  friendCodeIn.value = '';
+  renderFriendsList();
+  fpPanel.style.display = 'block';
+}
+
+myCodeDiv.addEventListener('click', () => {
+  const code = makeMyCode();
+  myCodeDiv.textContent = code;
+  if (navigator.clipboard) navigator.clipboard.writeText(code).catch(function(){});
+  myCodeDiv.style.color = '#44ffaa';
+  setTimeout(() => myCodeDiv.style.color = '', 1000);
+});
+
+addFriendBtn.addEventListener('click', () => {
+  const code = friendCodeIn.value.trim();
+  if (!code) return;
+  const data = parseCode(code);
+  if (!data || !data.id || !data.n) {
+    fpMsg.textContent = lang === 'ru' ? '❌ Неверный код' : '❌ Invalid code';
+    return;
+  }
+  if (data.id === playerId) {
+    fpMsg.textContent = lang === 'ru' ? '😅 Это твой собственный код!' : '😅 That is your own code!';
+    return;
+  }
+  const existing = friends.findIndex(f => f.id === data.id);
+  if (existing >= 0) {
+    // Обновляем счёт если он выше
+    friends[existing].n = data.n;
+    friends[existing].s = data.s;
+    fpMsg.textContent = lang === 'ru' ? '✅ Рекорд друга обновлён!' : '✅ Friend score updated!';
+  } else {
+    friends.push({ id: data.id, n: data.n, s: data.s });
+    fpMsg.textContent = lang === 'ru' ? `✅ ${data.n} добавлен!` : `✅ ${data.n} added!`;
+  }
+  saveFriends();
+  friendCodeIn.value = '';
+  renderFriendsList();
+});
+
+friendCodeIn.addEventListener('keydown', e => { if (e.key === 'Enter') addFriendBtn.click(); e.stopPropagation(); });
+friendCodeIn.addEventListener('keyup',   e => e.stopPropagation());
+friendCodeIn.addEventListener('mousedown', e => e.stopPropagation());
+friendCodeIn.addEventListener('touchstart', e => e.stopPropagation());
+
+friendsClose.addEventListener('click', () => { fpPanel.style.display = 'none'; });
+
+// ─── Language ────────────────────────────────────────────────────────────────
+let lang = localStorage.getItem('deepdiver_lang') || 'en';
+const TEXTS = {
+  en: {
+    title: '🤿 DEEP DIVER', subtitle: 'Underwater Cave Labyrinth',
+    desc1: 'Swim right, dodge enemies,', desc2: 'collect pearls, watch O₂.',
+    controls_hint: 'WASD / arrows  or  hold LMB', controls_hint_m: 'WASD / arrows / hold LMB',
+    campaign: '🏆 Campaign', campaign_sub: '500m, levels, victories', campaign_sub_m: '500m, levels',
+    sandbox: '🏖 Sandbox', sandbox_sub: 'endless, no goal', sandbox_sub_m: 'endless',
+    best: 'Best', level_lbl: 'Level', wins_lbl: 'Wins', controls_lbl: 'Controls:',
+    rotate: '📱 Rotate your screen! 🔄',
+    game_over: 'GAME OVER', score_lbl: 'Score', dist_lbl: 'Distance',
+    play_again: '[ SPACE / click ] — play again', play_again_m: 'tap — play again',
+    main_menu: 'main menu', main_menu_btn: '[ ENTER ] — main menu',
+    victory: '🏆 VICTORY!', wins_to: 'Wins', to_next: 'to next level',
+    next_round: '[ SPACE / tap ] — next round', menu_btn: '🏠 Main Menu',
+    new_level: '⬆ NEW LEVEL!', enemies_faster: 'Enemies faster, caves more dangerous!',
+    lets_go: "[ SPACE / tap ] — let's go!",
+    paused: '⏸ PAUSED', resume_hint: 'P / ESC — resume',
+    low_oxy: '⚠ LOW OXYGEN!',
+    next_cp: m => `⚑ next checkpoint in ${m}m`,
+    danger_bar: n => `Danger: ${'▮'.repeat(n)}${'▯'.repeat(5-n)}`,
+    diff_easy: 'EASY', diff_normal: 'NORMAL', diff_medium: 'MEDIUM', diff_hard: 'HARD', diff_danger: '⚠ DANGER',
+    lang_btn: '🇷🇺 RU',
+  },
+  ru: {
+    title: '🤿 DEEP DIVER', subtitle: 'Подводный пещерный лабиринт',
+    desc1: 'Плыви вправо, уворачивайся от врагов,', desc2: 'собирай жемчуг, следи за О₂.',
+    controls_hint: 'WASD / стрелки  или  зажми ЛКМ', controls_hint_m: 'WASD / стрелки / зажми ЛКМ',
+    campaign: '🏆 Кампания', campaign_sub: '500м, уровни, победы', campaign_sub_m: '500м, уровни',
+    sandbox: '🏖 Песочница', sandbox_sub: 'бесконечно, без цели', sandbox_sub_m: 'бесконечно',
+    best: 'Рекорд', level_lbl: 'Уровень', wins_lbl: 'Победы', controls_lbl: 'Управление:',
+    rotate: '📱 Поверните экран! 🔄',
+    game_over: 'КОНЕЦ ИГРЫ', score_lbl: 'Счёт', dist_lbl: 'Дистанция',
+    play_again: '[ ПРОБЕЛ / клик ] — ещё раз', play_again_m: 'тап — ещё раз',
+    main_menu: 'главное меню', main_menu_btn: '[ ENTER ] — главное меню',
+    victory: '🏆 ПОБЕДА!', wins_to: 'Победы', to_next: 'до следующего уровня',
+    next_round: '[ ПРОБЕЛ / тап ] — следующий раунд', menu_btn: '🏠 Главное меню',
+    new_level: '⬆ НОВЫЙ УРОВЕНЬ!', enemies_faster: 'Враги быстрее, пещеры опаснее!',
+    lets_go: '[ ПРОБЕЛ / тап ] — вперёд!',
+    paused: '⏸ ПАУЗА', resume_hint: 'P / ESC — продолжить',
+    low_oxy: '⚠ МАЛО КИСЛОРОДА!',
+    next_cp: m => `⚑ следующий чекпоинт через ${m}м`,
+    danger_bar: n => `Угроза: ${'▮'.repeat(n)}${'▯'.repeat(5-n)}`,
+    diff_easy: 'ЛЕГКО', diff_normal: 'НОРМА', diff_medium: 'СРЕДНЕ', diff_hard: 'СЛОЖНО', diff_danger: '⚠ ОПАСНО',
+    lang_btn: '🇬🇧 EN',
+  },
+};
+function t(k) { return TEXTS[lang][k]; }
+
 let controlMode = 'dpad'; // 'dpad' | 'joystick'
 
 // Joystick state
@@ -394,7 +700,7 @@ function collidesWall(wx, wy, hw, hh) {
 
 // в”Ђв”Ђв”Ђ Update в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function drawPause() {
-  // Р’СЃС‘ РІ СЌРєСЂР°РЅРЅС‹С… РєРѕРѕСЂРґРёРЅР°С‚Р°С…
+  // Р'СЃС' РІ СЌРєСЂР°РЅРЅС‹С… РєРѕРѕСЂРґРёРЅР°С‚Р°С…
   const sx = VP.x, sy = VP.y, sw = VP.w, sh = VP.h;
   const cx = sx + sw / 2, cy = sy + sh / 2;
   const sz = Math.round(Math.min(48, sh * 0.13));
@@ -402,9 +708,9 @@ function drawPause() {
   ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(sx, sy, sw, sh);
 
   ctx.fillStyle = '#fff'; ctx.font = `bold ${sz}px sans-serif`; ctx.textAlign = 'center';
-  ctx.fillText('⏸ PAUSED', cx, cy - 30);
+  ctx.fillText(t('paused'), cx, cy - 30);
   ctx.font = `${Math.round(sz*0.4)}px sans-serif`; ctx.fillStyle = '#aaddff';
-  ctx.fillText('P / ESC — resume', cx, cy + 10);
+  ctx.fillText(t('resume_hint'), cx, cy + 10);
 
   // РљРЅРѕРїРєР° РіР»Р°РІРЅРѕРіРѕ РјРµРЅСЋ
   const bw = Math.min(220, sw * 0.55), bh = Math.round(sz * 0.75);
@@ -413,7 +719,7 @@ function drawPause() {
   ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(sz*0.38)}px sans-serif`;
-  ctx.fillText('🏠 Main Menu', cx, by + bh * 0.65);
+  ctx.fillText(t('menu_btn'), cx, by + bh * 0.65);
   window._pauseMenuBtn = { x: bx, y: by, w: bw, h: bh };
 }
 
@@ -424,9 +730,18 @@ function update() {
 
   // Camera scroll
   if (!player.dead) {
-    camSpeed = Math.min(isMobile ? 2.0 : 4.0, camSpeed + 0.0004);
-    camXpx  += camSpeed;
-    distM    = Math.floor(camXpx / 40);
+    if (gameMode === 'sandbox') {
+      // Плавно следуем за игроком по X
+      const targetCamX = player.x - VP.w / 2;
+      camXpx += (targetCamX - camXpx) * 0.08;
+      camXpx = Math.max(0, camXpx);
+      camSpeed = 0;
+      distM = Math.floor(player.x / 40);
+    } else {
+      camSpeed = Math.min(isMobile ? 2.0 : 4.0, camSpeed + 0.0004);
+      camXpx  += camSpeed;
+      distM    = Math.floor(camXpx / 40);
+    }
   }
 
   // Generate ahead
@@ -443,7 +758,7 @@ function update() {
   if (oxygen <= 0 && !player.dead) killPlayer();
 
   // в”Ђв”Ђ Player movement в”Ђв”Ђ
-  const ACCEL = 0.42, FRIC = 0.80;
+  const ACCEL = 0.55 + Math.floor(distM / 100) * 0.1, FRIC = 0.84;
   let ax = 0, ay = 0;
 
   if (keys['ArrowRight'] || keys['d'] || keys['D']) ax += 1;
@@ -466,7 +781,7 @@ function update() {
   player.vy = player.vy * FRIC + ay * ACCEL + 0.04;
 
   const spd = Math.sqrt(player.vx ** 2 + player.vy ** 2);
-  if (spd > 4.5) { player.vx *= 4.5 / spd; player.vy *= 4.5 / spd; }
+  if (spd > 6.0) { player.vx *= 6.0 / spd; player.vy *= 6.0 / spd; }
 
   // Move X, resolve
   player.x += player.vx;
@@ -481,8 +796,8 @@ function update() {
 
   player.y = clamp(player.y, player.hh, ROWS * T - player.hh);
 
-  // Left wall = camera left edge (auto-scroll pushes you)
-  const leftBound  = camXpx + player.hw + 2;
+  // Left wall = camera left edge (auto-scroll pushes you; in sandbox camera follows so no push)
+  const leftBound  = gameMode === 'sandbox' ? player.hw : camXpx + player.hw + 2;
   const rightBound = camXpx + VP.w - player.hw - 2;
   if (player.x < leftBound) {
     player.x = leftBound;
@@ -662,7 +977,7 @@ function resetInput() {
 
 function respawnPlayer() {
   if (gameMode === 'sandbox') {
-    // Р’РѕР·СЂРѕР¶РґР°РµРјСЃСЏ РІ Р±РµР·РѕРїР°СЃРЅРѕРј РјРµСЃС‚Рµ — РІ С†РµРЅС‚СЂРµ СЌРєСЂР°РЅР° РїРѕ X
+    // Р'РѕР·СЂРѕР¶РґР°РµРјСЃСЏ РІ Р±РµР·РѕРїР°СЃРЅРѕРј РјРµСЃС‚Рµ — РІ С†РµРЅС‚СЂРµ СЌРєСЂР°РЅР° РїРѕ X
     player.x = camXpx + VP.w / 2;
     // РС‰РµРј Р±Р»РёР¶Р°Р№С€РёР№ AIR С‚Р°Р№Р» РїРѕ РІРµСЂС‚РёРєР°Р»Рё
     const spawnC = Math.floor(player.x / T);
@@ -1053,7 +1368,7 @@ function drawMobileControls() {
   ctx.restore();
 }
 
-// Touch в†’ dpad keys
+// Touch в†' dpad keys
 function getTouchCoords(t) {
   const r = canvas.getBoundingClientRect();
   return { tx: (t.clientX - r.left) * (W / r.width), ty: (t.clientY - r.top) * (H / r.height) };
@@ -1071,6 +1386,16 @@ function joyUpdate(tx, ty) {
 }
 
 function checkMenuButtons(tx, ty) {
+  const nb = window._nameBtn;
+  if (nb && tx>=nb.x && tx<=nb.x+nb.w && ty>=nb.y && ty<=nb.y+nb.h) { openNameInput(); return true; }
+  const fb = window._friendsBtn;
+  if (fb && tx>=fb.x && tx<=fb.x+fb.w && ty>=fb.y && ty<=fb.y+fb.h) { openFriendsPanel(); return true; }
+  const lb = window._langBtn;
+  if (lb && tx>=lb.x && tx<=lb.x+lb.w && ty>=lb.y && ty<=lb.y+lb.h) {
+    lang = lang === 'en' ? 'ru' : 'en';
+    localStorage.setItem('deepdiver_lang', lang);
+    return true;
+  }
   const bd = window._menuBtnDpad, bj = window._menuBtnJoy;
   if (bd && tx>=bd.x && tx<=bd.x+bd.w && ty>=bd.y && ty<=bd.y+bd.h) { controlMode='dpad'; return true; }
   if (bj && tx>=bj.x && tx<=bj.x+bj.w && ty>=bj.y && ty<=bj.y+bj.h) { controlMode='joystick'; return true; }
@@ -1175,7 +1500,7 @@ function drawBorder() {
 function drawHUD() {
   const cx = VP.w / 2;
   const diff = difficulty(Math.floor(camXpx / T));
-  const label = diff < 0.25 ? (distM >= 100 ? 'NORMAL' : 'EASY') : diff < 0.5 ? 'MEDIUM' : diff < 0.75 ? 'HARD' : '⚠ DANGER';
+  const label = diff < 0.25 ? (distM >= 100 ? t('diff_normal') : t('diff_easy')) : diff < 0.5 ? t('diff_medium') : diff < 0.75 ? t('diff_hard') : t('diff_danger');
   const diffCol = diff < 0.25 ? '#88ff88' : diff < 0.5 ? '#ffee44' : diff < 0.75 ? '#ff9944' : '#ff4444';
 
   if (isMobile) {
@@ -1188,11 +1513,11 @@ function drawHUD() {
     ctx.fillStyle = 'rgba(0,0,0,.40)';
     ctx.fillRect(0, py, bx2, ph);
     ctx.fillRect(bx2 + bw, py, VP.w - (bx2 + bw), ph);
-    // Р¦РµРЅС‚СЂР°Р»СЊРЅР°СЏ Р·РѕРЅР° — С‚С‘РјРЅР°СЏ РїРѕРґР»РѕР¶РєР° РїРѕРґ Р±Р°СЂ
+    // Р¦РµРЅС‚СЂР°Р»СЊРЅР°СЏ Р·РѕРЅР° — С‚С'РјРЅР°СЏ РїРѕРґР»РѕР¶РєР° РїРѕРґ Р±Р°СЂ
     ctx.fillStyle = 'rgba(0,0,0,.88)';
     ctx.fillRect(bx2, py, bw, ph);
 
-    // Р”РёСЃС‚Р°РЅС†РёСЏ СЃР»РµРІР°, СЃС‡С‘С‚ СЃРїСЂР°РІР°
+    // Р”РёСЃС‚Р°РЅС†РёСЏ СЃР»РµРІР°, СЃС‡С'С‚ СЃРїСЂР°РІР°
     ctx.fillStyle = '#88ddff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'left';
     ctx.fillText(`➡${distM}m`, 6, py + 10);
     ctx.fillStyle = '#ffe680'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'right';
@@ -1236,21 +1561,21 @@ function drawHUD() {
     ctx.fillText(lives >= 99 ? '🤿 ∞' : '🤿'.repeat(Math.min(lives,3)) + '🩶'.repeat(Math.max(0, 3-lives)), cx, heartsY);
     const toNext = nextCheckpointM - distM;
     ctx.fillStyle = 'rgba(100,255,180,.8)'; ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(`⚑ next checkpoint in ${toNext}m`, cx, heartsY + 16);
+    ctx.fillText(t('next_cp')(toNext), cx, heartsY + 16);
 
     // Threat bar РІРЅРёР·Сѓ
     const threatW = 260, threatH = 26, tx = cx - threatW/2, ty = VP.h - 34;
     ctx.fillStyle = 'rgba(0,0,0,.5)';
     ctx.beginPath(); ctx.roundRect(tx, ty, threatW, threatH, 6); ctx.fill();
     ctx.fillStyle = '#ffaaaa'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(`Danger: ${'▮'.repeat(Math.round(diff*5))}${'▯'.repeat(5-Math.round(diff*5))}`, cx, ty + 18);
+    ctx.fillText(t('danger_bar')(Math.round(diff*5)), cx, ty + 18);
   }
 
   // в”Ђв”Ђ Low O₂ warning в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   if (oxygen < 25 && Math.floor(frame/20)%2===0) {
     ctx.fillStyle = 'rgba(255,80,60,.15)'; ctx.fillRect(0, 0, VP.w, VP.h);
     ctx.fillStyle = '#ff5544'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('⚠ LOW OXYGEN!', cx, VP.h/2 - 14);
+    ctx.fillText(t('low_oxy'), cx, VP.h/2 - 14);
   }
 }
 
@@ -1275,14 +1600,14 @@ function drawMenu() {
 
     // Р›РµРІР°СЏ РєРѕР»РѕРЅРєР°: Р·Р°РіРѕР»РѕРІРѕРє + РѕРїРёСЃР°РЅРёРµ
     ctx.fillStyle = '#80dfff'; ctx.font = `bold ${Math.round(26*scale+14)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('🤿 DEEP DIVER', lx, H * 0.18);
+    ctx.fillText(t('title'), lx, H * 0.18);
     ctx.fillStyle = '#aaffee'; ctx.font = `${Math.round(11*scale+8)}px sans-serif`;
-    ctx.fillText('Underwater Cave Labyrinth', lx, H * 0.30);
+    ctx.fillText(t('subtitle'), lx, H * 0.30);
     ctx.fillStyle = '#cceeff'; ctx.font = `${Math.round(9*scale+8)}px sans-serif`;
-    ctx.fillText('Swim right, dodge enemies,', lx, H * 0.44);
-    ctx.fillText('collect pearls, watch O₂.', lx, H * 0.55);
+    ctx.fillText(t('desc1'), lx, H * 0.44);
+    ctx.fillText(t('desc2'), lx, H * 0.55);
     ctx.fillStyle = '#aaffcc'; ctx.font = `${Math.round(8*scale+7)}px sans-serif`;
-    ctx.fillText('WASD / arrows / hold LMB', lx, H * 0.67);
+    ctx.fillText(t('controls_hint_m'), lx, H * 0.67);
 
     // РџСЂР°РІР°СЏ РєРѕР»РѕРЅРєР°: РєРЅРѕРїРєРё СѓРїСЂР°РІР»РµРЅРёСЏ + СЂРµР¶РёРјС‹
     if (isMobile) drawControlSelector(H * 0.10, rx);
@@ -1295,24 +1620,24 @@ function drawMenu() {
     ctx.strokeStyle = '#55aaff'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(b1x, by, bw, bh, 10); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(13*scale+9)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('🏆 Campaign', b1x + bw/2, by + bh*0.42);
+    ctx.fillText(t('campaign'), b1x + bw/2, by + bh*0.42);
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `${Math.round(8*scale+7)}px sans-serif`;
-    ctx.fillText('500m, levels', b1x + bw/2, by + bh*0.78);
+    ctx.fillText(t('campaign_sub_m'), b1x + bw/2, by + bh*0.78);
 
     ctx.fillStyle = 'rgba(80,220,120,.2)';
     ctx.strokeStyle = '#44dd88'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(b2x, by, bw, bh, 10); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(13*scale+9)}px sans-serif`;
-    ctx.fillText('🏖 Sandbox', b2x + bw/2, by + bh*0.42);
+    ctx.fillText(t('sandbox'), b2x + bw/2, by + bh*0.42);
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `${Math.round(8*scale+7)}px sans-serif`;
-    ctx.fillText('endless', b2x + bw/2, by + bh*0.78);
+    ctx.fillText(t('sandbox_sub_m'), b2x + bw/2, by + bh*0.78);
 
     window._btnCampaign = { x: b1x, y: by, w: bw, h: bh };
     window._btnSandbox  = { x: b2x, y: by, w: bw, h: bh };
 
     if (hiScore > 0) {
       ctx.fillStyle = '#ffe680'; ctx.font = `${Math.round(8*scale+7)}px sans-serif`; ctx.textAlign = 'center';
-      ctx.fillText(`Best: ${hiScore}  |  Lv${level}  |  Wins: ${wins}/5`, rx, by + bh + 18);
+      ctx.fillText(`${t('best')}: ${hiScore}  |  Lv${level}  |  ${t('wins_lbl')}: ${wins}/5`, rx, by + bh + 18);
     }
 
   } else {
@@ -1321,9 +1646,9 @@ function drawMenu() {
 
     // Р—Р°РіРѕР»РѕРІРѕРє Рё РїРѕРґР·Р°РіРѕР»РѕРІРѕРє
     ctx.fillStyle = '#80dfff'; ctx.font = `bold ${titleSize}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('🤿 DEEP DIVER', W/2, H * 0.20);
+    ctx.fillText(t('title'), W/2, H * 0.20);
     ctx.fillStyle = '#aaffee'; ctx.font = `${Math.round(titleSize*0.38)}px sans-serif`;
-    ctx.fillText('Underwater Cave Labyrinth', W/2, H * 0.28);
+    ctx.fillText(t('subtitle'), W/2, H * 0.28);
 
     // РљРЅРѕРїРєРё СЃСЂР°Р·Сѓ РїРѕРґ РІС‚РѕСЂРѕР№ СЃС‚СЂРѕРєРѕР№
     const bw = Math.min(190, W * 0.26), bh = Math.round(54 * scale + 10), gap = 20;
@@ -1334,17 +1659,17 @@ function drawMenu() {
     ctx.strokeStyle = '#55aaff'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(b1x, by, bw, bh, 12); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(titleSize*0.42)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('🏆 Campaign', b1x + bw/2, by + bh*0.42);
+    ctx.fillText(t('campaign'), b1x + bw/2, by + bh*0.42);
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `${Math.round(titleSize*0.28)}px sans-serif`;
-    ctx.fillText('500m, levels, victories', b1x + bw/2, by + bh*0.78);
+    ctx.fillText(t('campaign_sub'), b1x + bw/2, by + bh*0.78);
 
     ctx.fillStyle = 'rgba(80,220,120,.2)';
     ctx.strokeStyle = '#44dd88'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(b2x, by, bw, bh, 12); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(titleSize*0.42)}px sans-serif`;
-    ctx.fillText('🏖 Sandbox', b2x + bw/2, by + bh*0.42);
+    ctx.fillText(t('sandbox'), b2x + bw/2, by + bh*0.42);
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `${Math.round(titleSize*0.28)}px sans-serif`;
-    ctx.fillText('endless, no goal', b2x + bw/2, by + bh*0.78);
+    ctx.fillText(t('sandbox_sub'), b2x + bw/2, by + bh*0.78);
 
     window._btnCampaign = { x: b1x, y: by, w: bw, h: bh };
     window._btnSandbox  = { x: b2x, y: by, w: bw, h: bh };
@@ -1352,10 +1677,10 @@ function drawMenu() {
     // РћРїРёСЃР°РЅРёРµ Рё РїРѕРґСЃРєР°Р·РєРё РЅРёР¶Рµ РєРЅРѕРїРѕРє
     const descY = by + bh + H * 0.05;
     ctx.fillStyle = '#cceeff'; ctx.font = `${Math.round(titleSize*0.34)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('Swim right, dodge enemies,', W/2, descY);
-    ctx.fillText('collect pearls, watch your O₂.', W/2, descY + H * 0.07);
+    ctx.fillText(t('desc1'), W/2, descY);
+    ctx.fillText(t('desc2'), W/2, descY + H * 0.07);
     ctx.fillStyle = '#aaffcc'; ctx.font = `${Math.round(titleSize*0.32)}px sans-serif`;
-    ctx.fillText('WASD / arrows  or  hold LMB', W/2, descY + H * 0.14);
+    ctx.fillText(t('controls_hint'), W/2, descY + H * 0.14);
 
     if (isMobile) drawControlSelector(descY + H * 0.21);
 
@@ -1365,16 +1690,83 @@ function drawMenu() {
       ctx.fillStyle = `rgba(255,20,20,${0.7 + 0.3 * Math.sin(worldFrame * 0.1)})`;
       ctx.font = `bold ${Math.round(titleSize*0.45)}px sans-serif`; ctx.textAlign = 'center';
       ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 16;
-      ctx.fillText('📱 Rotate your screen! 🔄', W/2, H * 0.06);
+      ctx.fillText(t('rotate'), W/2, H * 0.06);
       ctx.shadowBlur = 0;
       ctx.restore();
     }
 
     if (hiScore > 0) {
       ctx.fillStyle = '#ffe680'; ctx.font = `${Math.round(titleSize*0.30)}px sans-serif`; ctx.textAlign = 'center';
-      ctx.fillText(`Best: ${hiScore}  |  Level: ${level}  |  Wins: ${wins}/5`, W/2, by + bh + 22);
+      ctx.fillText(`${t('best')}: ${hiScore}  |  ${t('level_lbl')}: ${level}  |  ${t('wins_lbl')}: ${wins}/5`, W/2, by + bh + 22);
     }
   }
+  drawLangBtn();
+  drawNameBtn();
+  drawFriendsBtn();
+  drawFriendsLeaderboard();
+}
+
+function drawFriendsBtn() {
+  const label = lang === 'ru' ? '👥 Друзья' : '👥 Friends';
+  ctx.save();
+  ctx.font = 'bold 14px sans-serif';
+  const tw = ctx.measureText(label).width;
+  const bw = tw + 28, bh = 32;
+  const bx = 12, by = 52; // под кнопкой никнейма
+  ctx.fillStyle = 'rgba(255,255,255,.12)';
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.fillText(label, bx + bw / 2, by + bh * 0.68);
+  ctx.restore();
+  window._friendsBtn = { x: bx, y: by, w: bw, h: bh };
+}
+
+function drawFriendsLeaderboard() {
+  if (!friends.length) return;
+  const sorted = [...friends].sort((a,b) => b.s - a.s).slice(0,5);
+  const cx = W / 2, startY = H * 0.88;
+  const rowH = 20, pad = 12;
+  const boxW = Math.min(300, W * 0.5), boxH = rowH * sorted.length + pad * 2 + 20;
+  const bx = cx - boxW/2, by = startY - boxH;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.45)';
+  ctx.beginPath(); ctx.roundRect(bx, by, boxW, boxH, 10); ctx.fill();
+  ctx.fillStyle = '#80dfff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(lang === 'ru' ? '👥 Рекорды друзей' : '👥 Friends leaderboard', cx, by + pad + 8);
+  sorted.forEach((f, i) => {
+    const y = by + pad + 22 + i * rowH;
+    ctx.fillStyle = '#aaddff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`${i+1}. 🤿 ${f.n}`, bx + 12, y);
+    ctx.fillStyle = '#ffe680'; ctx.textAlign = 'right';
+    ctx.fillText(`◆ ${f.s}`, bx + boxW - 12, y);
+  });
+  ctx.restore();
+}
+
+function drawNameBtn() {
+  const label = playerName ? `🤿 ${playerName}` : (lang === 'ru' ? '✏ Никнейм' : '✏ Nickname');
+  ctx.save();
+  ctx.font = 'bold 14px sans-serif';
+  const tw = ctx.measureText(label).width;
+  const bw = tw + 28, bh = 32, bx = 12, by = 12;
+  ctx.fillStyle = 'rgba(255,255,255,.12)';
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.fillText(label, bx + bw / 2, by + bh * 0.68);
+  ctx.restore();
+  window._nameBtn = { x: bx, y: by, w: bw, h: bh };
+}
+
+function drawLangBtn() {
+  const bw = 72, bh = 32, bx = W - bw - 12, by = 12;
+  ctx.fillStyle = 'rgba(255,255,255,.12)';
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(t('lang_btn'), bx + bw / 2, by + bh * 0.68);
+  window._langBtn = { x: bx, y: by, w: bw, h: bh };
 }
 
 function drawControlSelector(cy, cx) {
@@ -1386,7 +1778,7 @@ function drawControlSelector(cy, cx) {
   const b1x = cx - btnW - gap/2, b2x = cx + gap/2;
   const fs = Math.round(9 * scale + 7);
   ctx.fillStyle = '#88ddff'; ctx.font = `bold ${fs}px sans-serif`; ctx.textAlign = 'center';
-  ctx.fillText('Controls:', cx, cy - 5);
+  ctx.fillText(t('controls_lbl'), cx, cy - 5);
   ctx.fillStyle = controlMode==='dpad' ? 'rgba(80,200,255,.5)' : 'rgba(255,255,255,.1)';
   ctx.strokeStyle = controlMode==='dpad' ? '#80dfff' : 'rgba(255,255,255,.3)';
   ctx.lineWidth = 2;
@@ -1412,22 +1804,26 @@ function drawDead() {
   ctx.fillStyle = 'rgba(0,0,20,.72)'; ctx.fillRect(0,0,W,H);
   ctx.fillStyle = '#ff1111'; ctx.font = `bold ${titleSz}px sans-serif`; ctx.textAlign = 'center';
   ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 20;
-  ctx.fillText('GAME OVER', W/2, H * 0.20);
+  ctx.fillText(t('game_over'), W/2, H * 0.20);
   ctx.shadowBlur = 0;
+  if (playerName) {
+    ctx.fillStyle = '#aaddff'; ctx.font = `${Math.round(titleSz*0.38)}px sans-serif`;
+    ctx.fillText(`🤿 ${playerName}`, W/2, H * 0.30);
+  }
 
   if (compact) {
     // Р”РІРµ РєРѕР»РѕРЅРєРё
     const lx = W * 0.30, rx = W * 0.70;
     ctx.fillStyle = '#ffe680'; ctx.font = `${textSz}px sans-serif`;
-    ctx.fillText(`Score: ${score}`, lx, H * 0.42);
-    ctx.fillText(`Distance: ${distM}m`, lx, H * 0.57);
+    ctx.fillText(`${t('score_lbl')}: ${score}`, lx, H * 0.42);
+    ctx.fillText(`${t('dist_lbl')}: ${distM}m`, lx, H * 0.57);
     ctx.fillStyle = '#aaffcc'; ctx.font = `${textSz}px sans-serif`;
-    ctx.fillText(`Best: ${hiScore}`, lx, H * 0.72);
+    ctx.fillText(`${t('best')}: ${hiScore}`, lx, H * 0.72);
 
     if (isMobile) drawControlSelector(H * 0.32, rx);
 
     ctx.fillStyle = '#88ddff'; ctx.font = `bold ${smallSz}px sans-serif`;
-    ctx.fillText('tap — play again', rx, H * 0.72);
+    ctx.fillText(t('play_again_m'), rx, H * 0.72);
 
     const mw = Math.min(180, W * 0.24), mh = Math.round(34 * s + 8);
     const mx = rx - mw/2, my = H * 0.80;
@@ -1435,17 +1831,17 @@ function drawDead() {
     ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(mx, my, mw, mh, 8); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.font = `${smallSz}px sans-serif`;
-    ctx.fillText('main menu', rx, my + mh * 0.65);
+    ctx.fillText(t('main_menu'), rx, my + mh * 0.65);
     window._menuBackBtn = { x: mx, y: my, w: mw, h: mh };
   } else {
     ctx.fillStyle = '#ffe680'; ctx.font = `${textSz}px sans-serif`;
-    ctx.fillText(`Score: ${score}`, W/2, H * 0.38);
-    ctx.fillText(`Distance: ${distM}m`, W/2, H * 0.47);
+    ctx.fillText(`${t('score_lbl')}: ${score}`, W/2, H * 0.38);
+    ctx.fillText(`${t('dist_lbl')}: ${distM}m`, W/2, H * 0.47);
     ctx.fillStyle = '#aaffcc'; ctx.font = `${textSz}px sans-serif`;
-    ctx.fillText(`Best: ${hiScore}`, W/2, H * 0.56);
+    ctx.fillText(`${t('best')}: ${hiScore}`, W/2, H * 0.56);
     if (isMobile) drawControlSelector(H * 0.63);
     ctx.fillStyle = '#88ddff'; ctx.font = `bold ${textSz}px sans-serif`;
-    ctx.fillText('[ SPACE / click ] — play again', W/2, H * 0.80);
+    ctx.fillText(t('play_again'), W/2, H * 0.80);
 
     const mw = Math.min(220, W * 0.30), mh = Math.round(40 * s + 5);
     const mx = W/2 - mw/2, my = H * 0.87;
@@ -1453,7 +1849,7 @@ function drawDead() {
     ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(mx, my, mw, mh, 10); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.font = `${smallSz}px sans-serif`;
-    ctx.fillText('[ ENTER ] — main menu', W/2, my + mh * 0.65);
+    ctx.fillText(t('main_menu_btn'), W/2, my + mh * 0.65);
     window._menuBackBtn = { x: mx, y: my, w: mw, h: mh };
   }
 }
@@ -1465,17 +1861,17 @@ function drawWin() {
   ctx.fillStyle = 'rgba(0,20,10,.8)'; ctx.fillRect(0,0,W,H);
   ctx.fillStyle = '#44ffaa'; ctx.font = `bold ${titleSz}px sans-serif`; ctx.textAlign = 'center';
   ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 28;
-  ctx.fillText('🏆 VICTORY!', W/2, H * 0.20);
+  ctx.fillText(t('victory'), W/2, H * 0.20);
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#fff'; ctx.font = `${textSz}px sans-serif`;
-  ctx.fillText(`Distance: 500m`, W/2, H * 0.36);
-  ctx.fillText(`Score: ${score}`, W/2, H * 0.47);
+  ctx.fillText(`${t('dist_lbl')}: 500m`, W/2, H * 0.36);
+  ctx.fillText(`${t('score_lbl')}: ${score}`, W/2, H * 0.47);
   ctx.font = `${pipSz}px sans-serif`;
   ctx.fillText('🏅'.repeat(wins) + '⬜'.repeat(5 - wins), W/2, H * 0.60);
   ctx.fillStyle = '#aaffcc'; ctx.font = `${textSz}px sans-serif`;
-  ctx.fillText(`Wins: ${wins} / 5 to next level`, W/2, H * 0.72);
+  ctx.fillText(`${t('wins_to')}: ${wins} / 5 ${t('to_next')}`, W/2, H * 0.72);
   ctx.fillStyle = '#ffee66'; ctx.font = `bold ${textSz}px sans-serif`;
-  ctx.fillText('[ SPACE / tap ] — next round', W/2, H * 0.78);
+  ctx.fillText(t('next_round'), W/2, H * 0.78);
 
   // Main Menu button
   const bw = Math.min(220, W * 0.30), bh = Math.round(textSz * 1.1);
@@ -1484,7 +1880,7 @@ function drawWin() {
   ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.font = `${textSz}px sans-serif`; ctx.textAlign = 'center';
-  ctx.fillText('🏠 Main Menu', W/2, by + bh * 0.65);
+  ctx.fillText(t('menu_btn'), W/2, by + bh * 0.65);
   window._winMenuBtn = { x: bx, y: by, w: bw, h: bh };
 }
 
@@ -1495,14 +1891,14 @@ function drawLevelUp() {
   ctx.fillStyle = 'rgba(0,0,30,.85)'; ctx.fillRect(0,0,W,H);
   ctx.fillStyle = '#ffdd00'; ctx.font = `bold ${titleSz}px sans-serif`; ctx.textAlign = 'center';
   ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 30;
-  ctx.fillText('⬆ NEW LEVEL!', W/2, H * 0.22);
+  ctx.fillText(t('new_level'), W/2, H * 0.22);
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#fff'; ctx.font = `${textSz}px sans-serif`;
-  ctx.fillText(`Level ${level}  в†’  ${level + 1}`, W/2, H * 0.42);
+  ctx.fillText(`${t('level_lbl')} ${level}  →  ${level + 1}`, W/2, H * 0.42);
   ctx.fillStyle = '#ffaaaa'; ctx.font = `${smallSz}px sans-serif`;
-  ctx.fillText('Enemies faster, caves more dangerous!', W/2, H * 0.58);
+  ctx.fillText(t('enemies_faster'), W/2, H * 0.58);
   ctx.fillStyle = '#88ddff'; ctx.font = `bold ${textSz * 0.9}px sans-serif`;
-  ctx.fillText('[ SPACE / tap ] — let\'s go!', W/2, H * 0.76);
+  ctx.fillText(t('lets_go'), W/2, H * 0.76);
 }
 
 // в”Ђв”Ђв”Ђ Main loop в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -1547,7 +1943,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// Р‘Р»РѕРєРёСЂСѓРµРј СЃРєСЂРѕР»Р», Р·СѓРј Рё РєРѕРЅС‚РµРєСЃС‚РЅРѕРµ РјРµРЅСЋ РЅР° РјРѕР±РёР»СЊРЅС‹С…
+// Р'Р»РѕРєРёСЂСѓРµРј СЃРєСЂРѕР»Р», Р·СѓРј Рё РєРѕРЅС‚РµРєСЃС‚РЅРѕРµ РјРµРЅСЋ РЅР° РјРѕР±РёР»СЊРЅС‹С…
 document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
 document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 document.addEventListener('gestureend',    e => e.preventDefault(), { passive: false });
