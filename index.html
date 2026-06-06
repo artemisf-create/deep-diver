@@ -6,7 +6,16 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Deep Diver</title>
+  <title>Deep Diver — Free Online Underwater Cave Game</title>
+  <meta name="description" content="Deep Diver is a free browser game where you swim through underwater caves, dodge sharks and jellyfish, collect pearls and beat your friends' high scores. Play instantly, no download needed!">
+  <meta name="keywords" content="deep diver, underwater game, browser game, free online game, cave game, html5 game, arcade game">
+  <meta name="author" content="artemisf-create">
+  <meta property="og:title" content="Deep Diver — Free Online Underwater Cave Game">
+  <meta property="og:description" content="Swim through underwater caves, dodge sharks, collect pearls. Free browser game with friends leaderboard!">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://artemisf-create.github.io/deep-diver">
+  <link rel="canonical" href="https://artemisf-create.github.io/deep-diver">
+  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
@@ -68,6 +77,35 @@
     }
     #nameInput button:hover { background: rgba(80,160,255,0.6); }
 
+    #helpPanel {
+      display: none;
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      background: rgba(0,15,35,0.98);
+      border: 2px solid #80dfff;
+      border-radius: 16px;
+      padding: 24px 28px;
+      width: min(420px, 92vw);
+      box-shadow: 0 0 40px rgba(80,180,255,0.3);
+      color: #fff;
+      font-family: sans-serif;
+    }
+    #helpPanel h2 { color:#80dfff; font-size:20px; margin-bottom:16px; text-align:center; }
+    #helpPanel .section { margin-bottom:14px; }
+    #helpPanel .section h3 { color:#aaffcc; font-size:13px; margin-bottom:7px; text-transform:uppercase; letter-spacing:1px; }
+    #helpPanel .row { display:flex; align-items:center; gap:10px; margin-bottom:6px; font-size:14px; }
+    #helpPanel .key {
+      background: rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3);
+      border-radius:6px; padding:3px 9px; font:bold 13px monospace;
+      color:#fff; white-space:nowrap; flex-shrink:0;
+    }
+    #helpPanel .desc { color:rgba(255,255,255,.8); }
+    #helpPanel .tip { background:rgba(255,220,80,.08); border-left:3px solid #ffe680; padding:8px 12px; border-radius:0 8px 8px 0; font-size:13px; color:rgba(255,255,255,.75); margin-bottom:8px; }
+    #helpClose { display:block; width:100%; margin-top:14px; background:rgba(80,160,255,.3); border:2px solid #55aaff; border-radius:8px; color:#fff; font:bold 15px sans-serif; padding:9px; cursor:pointer; }
+    #helpClose:hover { background:rgba(80,160,255,.55); }
+
     #friendsPanel {
       display: none;
       position: fixed;
@@ -114,10 +152,83 @@
     .fp-hint { font-size:11px; color:rgba(255,255,255,.4); text-align:center; margin-bottom:10px; }
     #friendsClose { display:block; width:100%; margin-top:4px; }
     #fpMsg { font-size:13px; color:#ff8888; text-align:center; min-height:18px; margin-bottom:4px; }
+
+    #leaderboardPanel {
+      display: none;
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      background: rgba(0,10,30,0.98);
+      border: 2px solid #ffe680;
+      border-radius: 16px;
+      padding: 20px 24px;
+      width: min(440px, 94vw);
+      max-height: 90vh;
+      box-shadow: 0 0 40px rgba(255,220,80,0.25);
+      color: #fff;
+      font-family: sans-serif;
+      display: none;
+      flex-direction: column;
+    }
+    #leaderboardPanel h2 { color:#ffe680; font-size:20px; margin-bottom:4px; text-align:center; }
+    #lbSubtitle { font-size:12px; color:rgba(255,255,255,.4); text-align:center; margin-bottom:12px; }
+    #lbList {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 55vh;
+      margin-bottom: 12px;
+    }
+    #lbList .lr {
+      display: flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 8px;
+      margin-bottom: 5px;
+      background: rgba(255,255,255,.06);
+      gap: 8px;
+    }
+    #lbList .lr.me   { background: rgba(255,220,80,.15); border: 1px solid rgba(255,220,80,.4); }
+    #lbList .lr.friend { background: rgba(80,200,255,.1); border: 1px solid rgba(80,200,255,.3); }
+    #lbList .lr .lrank { color:rgba(255,255,255,.45); width:24px; text-align:right; flex-shrink:0; font-size:13px; }
+    #lbList .lr .lname { flex:1; font-weight:bold; color:#cceeff; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #lbList .lr .lscore { color:#ffe680; font-weight:bold; font-size:14px; flex-shrink:0; }
+    #lbList .lr .ltag { font-size:11px; margin-left:4px; }
+    #lbLoading { text-align:center; color:rgba(255,255,255,.4); padding:20px 0; font-size:14px; }
+    #leaderboardPanel button { display:block; width:100%; background:rgba(255,220,80,.2); border:2px solid #ffe680; border-radius:8px; color:#fff; font:bold 15px sans-serif; padding:9px; cursor:pointer; }
+    #leaderboardPanel button:hover { background:rgba(255,220,80,.4); }
   </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+<div id="helpPanel">
+  <h2 id="helpTitle">❓ How to play</h2>
+  <div class="section">
+    <h3 id="helpCtrlTitle">Controls</h3>
+    <div class="row"><span class="key">W A S D</span><span class="desc" id="h1"></span></div>
+    <div class="row"><span class="key">↑ ← ↓ →</span><span class="desc" id="h2"></span></div>
+    <div class="row"><span class="key">Hold LMB</span><span class="desc" id="h3"></span></div>
+    <div class="row"><span class="key">P / ESC</span><span class="desc" id="h4"></span></div>
+  </div>
+  <div class="section">
+    <h3 id="helpGoalTitle">Goal</h3>
+    <div class="tip" id="helpGoal"></div>
+  </div>
+  <div class="section">
+    <h3 id="helpItemsTitle">Items</h3>
+    <div class="row"><span>🟡</span><span class="desc" id="hi1"></span></div>
+    <div class="row"><span>🫧</span><span class="desc" id="hi2"></span></div>
+    <div class="row"><span>🦈</span><span class="desc" id="hi3"></span></div>
+    <div class="row"><span>💀</span><span class="desc" id="hi4"></span></div>
+  </div>
+  <button id="helpClose">OK</button>
+</div>
+<div id="leaderboardPanel">
+  <h2 id="lbTitle">🏆 Leaderboard</h2>
+  <p id="lbSubtitle"></p>
+  <div id="lbList"><div id="lbLoading">Loading…</div></div>
+  <button id="lbClose">Close</button>
+</div>
 <div id="friendsPanel">
   <h2 id="fpTitle">👥 Friends</h2>
   <div id="friendsList"></div>
@@ -350,6 +461,7 @@ let gameMode    = 'campaign'; // 'campaign' | 'sandbox'
 // ─── Save / Load progress ────────────────────────────────────────────────────
 function saveProgress() {
   localStorage.setItem('deepdiver', JSON.stringify({ hiScore, level, wins }));
+  syncMyScore(); // публикуем рекорд в Gun
 }
 function loadProgress() {
   try {
@@ -378,7 +490,7 @@ function openNameInput() {
 }
 function closeNameInput() {
   const val = nameField.value.trim();
-  if (val) { playerName = val; localStorage.setItem('deepdiver_name', val); }
+  if (val) { playerName = val; localStorage.setItem('deepdiver_name', val); syncMyScore(); }
   nameInputDiv.style.display = 'none';
 }
 nameConfirm.addEventListener('click', closeNameInput);
@@ -387,29 +499,165 @@ nameField.addEventListener('keyup',   e => e.stopPropagation());
 nameField.addEventListener('mousedown', e => e.stopPropagation());
 nameField.addEventListener('touchstart', e => e.stopPropagation());
 
-// ─── Friends ─────────────────────────────────────────────────────────────────
-// playerId — уникальный ID игрока
+// ─── Friends + Gun.js real-time sync ─────────────────────────────────────────
 let playerId = localStorage.getItem('deepdiver_pid');
 if (!playerId) {
   playerId = 'p' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
   localStorage.setItem('deepdiver_pid', playerId);
 }
 
+// Gun — децентрализованная P2P база, работает через публичные relay-серверы
+const gun = Gun(['https://relay.peer.ooo/gun',
+                 'https://gun.eco/gun']);
+const playersDB = gun.get('deepdiver-v1-players');
+
+// Публикуем свой рекорд в сеть
+function syncMyScore() {
+  if (!playerName) return;
+  playersDB.get(playerId).put({ n: playerName, s: hiScore, t: Date.now() });
+}
+
 let friends = JSON.parse(localStorage.getItem('deepdiver_friends') || '[]');
-// friends = [{id, name, score}]
+// friends = [{id, n, s}]
+const gunSubs = {}; // активные подписки Gun по friendId
 
 function saveFriends() { localStorage.setItem('deepdiver_friends', JSON.stringify(friends)); }
 
+// Подписываемся на обновления конкретного друга через Gun
+function subscribeFriend(friendId) {
+  if (gunSubs[friendId]) return; // уже подписаны
+  gunSubs[friendId] = playersDB.get(friendId).on(function(data) {
+    if (!data || !data.n) return;
+    const idx = friends.findIndex(function(f){ return f.id === friendId; });
+    if (idx < 0) return;
+    const changed = friends[idx].n !== data.n || friends[idx].s !== data.s;
+    friends[idx].n = data.n;
+    friends[idx].s = data.s || 0;
+    if (changed) { saveFriends(); renderFriendsList(); }
+  });
+}
+
+// Подписываемся на всех друзей при старте
+function subscribeAllFriends() {
+  friends.forEach(function(f){ subscribeFriend(f.id); });
+}
+subscribeAllFriends();
+
+// Отправляем свой ID в "входящие" к другу
+function sendFriendRequest(toId) {
+  playersDB.get(toId).get('reqs').get(playerId).put({ from: playerId, t: Date.now() });
+}
+
+// Слушаем входящие запросы — если кто-то добавил нас, добавляем его в ответ
+function listenIncomingRequests() {
+  playersDB.get(playerId).get('reqs').map().on(function(data) {
+    if (!data || !data.from) return;
+    const fid = data.from;
+    if (fid === playerId) return;
+    if (friends.find(function(f){ return f.id === fid; })) return; // уже есть
+    // Автоматически добавляем
+    friends.push({ id: fid, n: '…', s: 0 });
+    saveFriends();
+    subscribeFriend(fid);
+    renderFriendsList();
+  });
+}
+listenIncomingRequests();
+
+// ─── Help Panel ──────────────────────────────────────────────────────────────
+const helpPanel = document.getElementById('helpPanel');
+const helpClose = document.getElementById('helpClose');
+
+function openHelp() {
+  const ru = lang === 'ru';
+  document.getElementById('helpTitle').textContent     = ru ? '❓ Как играть' : '❓ How to play';
+  document.getElementById('helpCtrlTitle').textContent = ru ? 'Управление' : 'Controls';
+  document.getElementById('h1').textContent = ru ? 'Движение' : 'Move';
+  document.getElementById('h2').textContent = ru ? 'Движение' : 'Move';
+  document.getElementById('h3').textContent = ru ? 'Плыть к курсору' : 'Swim toward cursor';
+  document.getElementById('h4').textContent = ru ? 'Пауза' : 'Pause';
+  document.getElementById('helpGoalTitle').textContent  = ru ? 'Цель' : 'Goal';
+  document.getElementById('helpGoal').textContent       = ru
+    ? 'Плыви вправо как можно дальше! В кампании цель — проплыть 500 метров. Следи за кислородом (O₂) — подбирай пузыри чтобы пополнить его. Собирай жемчуг для очков. У тебя 3 жизни.'
+    : 'Swim right as far as you can! In Campaign mode the goal is 500 metres. Watch your oxygen (O₂) — grab bubbles to refill it. Collect pearls for points. You have 3 lives.';
+  document.getElementById('helpItemsTitle').textContent = ru ? 'Предметы и враги' : 'Items & enemies';
+  document.getElementById('hi1').textContent = ru ? 'Жемчуг — +10 очков' : 'Pearl — +10 points';
+  document.getElementById('hi2').textContent = ru ? 'Пузырь O₂ — восстанавливает кислород' : 'O₂ bubble — restores oxygen';
+  document.getElementById('hi3').textContent = ru ? 'Акула и медуза — теряешь жизнь' : 'Shark & jellyfish — lose a life';
+  document.getElementById('hi4').textContent = ru ? 'Мина — теряешь жизнь' : 'Mine — lose a life';
+  document.getElementById('helpClose').textContent = ru ? 'Понятно!' : 'Got it!';
+  helpPanel.style.display = 'block';
+}
+helpClose.addEventListener('click', function(){ helpPanel.style.display = 'none'; });
+
+// ─── Global Leaderboard ───────────────────────────────────────────────────────
+const lbPanel   = document.getElementById('leaderboardPanel');
+const lbTitle   = document.getElementById('lbTitle');
+const lbSub     = document.getElementById('lbSubtitle');
+const lbList    = document.getElementById('lbList');
+const lbLoading = document.getElementById('lbLoading');
+const lbClose   = document.getElementById('lbClose');
+
+let allPlayers = {}; // { [id]: {n, s} }
+
+// Подписываемся на всех игроков в базе — Gun стримит обновления
+playersDB.map().on(function(data, id) {
+  if (!data || !data.n || !data.s) return;
+  if (id === '_') return; // служебный ключ Gun
+  allPlayers[id] = { n: data.n, s: data.s };
+  if (lbPanel.style.display !== 'none') renderLeaderboard();
+});
+
+function renderLeaderboard() {
+  const ru = lang === 'ru';
+  const friendIds = new Set(friends.map(function(f){ return f.id; }));
+  const rows = Object.entries(allPlayers)
+    .map(function(e){ return { id: e[0], n: e[1].n, s: e[1].s }; })
+    .sort(function(a,b){ return b.s - a.s; })
+    .slice(0, 100);
+
+  if (!rows.length) {
+    lbList.innerHTML = '<div id="lbLoading">' + (ru ? 'Загрузка…' : 'Loading…') + '</div>';
+    return;
+  }
+
+  const myRank = rows.findIndex(function(r){ return r.id === playerId; });
+
+  lbList.innerHTML = rows.map(function(r, i) {
+    const isMe     = r.id === playerId;
+    const isFriend = friendIds.has(r.id);
+    const medal    = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '.';
+    const tag      = isMe ? (ru ? ' 👤вы' : ' 👤you') : isFriend ? ' 🤝' : '';
+    const cls      = isMe ? 'lr me' : isFriend ? 'lr friend' : 'lr';
+    return '<div class="' + cls + '">' +
+      '<span class="lrank">' + medal + '</span>' +
+      '<span class="lname">🤿 ' + r.n + '<span class="ltag">' + tag + '</span></span>' +
+      '<span class="lscore">◆ ' + r.s + '</span>' +
+    '</div>';
+  }).join('');
+
+  lbSub.textContent = ru
+    ? (rows.length + ' игроков' + (myRank >= 0 ? ' · ваше место: #' + (myRank+1) : ''))
+    : (rows.length + ' players' + (myRank >= 0 ? ' · your rank: #' + (myRank+1) : ''));
+}
+
+function openLeaderboard() {
+  const ru = lang === 'ru';
+  lbTitle.textContent = ru ? '🏆 Таблица лидеров' : '🏆 Leaderboard';
+  lbClose.textContent = ru ? 'Закрыть' : 'Close';
+  renderLeaderboard();
+  lbPanel.style.display = 'flex';
+}
+
+lbClose.addEventListener('click', function(){ lbPanel.style.display = 'none'; });
+
+// Код = просто playerId в base64 (имя/рекорд берём из Gun автоматически)
 function makeMyCode() {
-  // Код = base64({id, name, score})
-  const obj = { id: playerId, n: playerName || '???', s: hiScore };
-  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  return btoa(playerId);
 }
 
 function parseCode(code) {
-  try {
-    return JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
-  } catch(e) { return null; }
+  try { return atob(code.trim()); } catch(e) { return null; }
 }
 
 const fpPanel      = document.getElementById('friendsPanel');
@@ -425,33 +673,33 @@ const fpMsg        = document.getElementById('fpMsg');
 
 function fpTexts() {
   const ru = lang === 'ru';
-  fpTitle.textContent     = ru ? '👥 Друзья' : '👥 Friends';
-  fpMyCodeLbl.textContent = ru ? 'Твой код (поделись с другом):' : 'Your code (share with a friend):';
-  fpHint.textContent      = ru ? 'Нажми чтобы скопировать.' : 'Click to copy.';
-  friendCodeIn.placeholder= ru ? 'Вставь код друга…' : "Paste friend's code…";
-  addFriendBtn.textContent= ru ? 'Добавить' : 'Add';
-  friendsClose.textContent= ru ? 'Закрыть' : 'Close';
+  fpTitle.textContent      = ru ? '👥 Друзья' : '👥 Friends';
+  fpMyCodeLbl.textContent  = ru ? 'Твой код (отправь другу один раз):' : 'Your code (share once with a friend):';
+  fpHint.textContent       = ru ? 'Нажми чтобы скопировать. Рекорды обновляются сами!' : 'Click to copy. Scores sync automatically!';
+  friendCodeIn.placeholder = ru ? 'Вставь код друга…' : "Paste friend's code…";
+  addFriendBtn.textContent = ru ? 'Добавить' : 'Add';
+  friendsClose.textContent = ru ? 'Закрыть' : 'Close';
 }
 
 function renderFriendsList() {
   if (!friends.length) {
-    fpList.innerHTML = `<div class="empty">${lang==='ru' ? 'Пока нет друзей' : 'No friends yet'}</div>`;
+    fpList.innerHTML = '<div class="empty">' + (lang==='ru' ? 'Пока нет друзей' : 'No friends yet') + '</div>';
     return;
   }
-  const sorted = [...friends].sort((a,b) => b.s - a.s);
-  fpList.innerHTML = sorted.map((f,i) =>
-    `<div class="fr">
-      <span style="color:rgba(255,255,255,.5);margin-right:8px">${i+1}.</span>
-      <span class="fname">🤿 ${f.n}</span>
-      <span class="fscore" style="margin-left:auto">◆ ${f.s}</span>
-      <span class="fdel" data-id="${f.id}" title="Remove">✕</span>
-    </div>`
-  ).join('');
-  fpList.querySelectorAll('.fdel').forEach(btn => {
-    btn.addEventListener('click', e => {
+  const sorted = [...friends].sort(function(a,b){ return b.s - a.s; });
+  fpList.innerHTML = sorted.map(function(f,i){
+    return '<div class="fr">' +
+      '<span style="color:rgba(255,255,255,.5);margin-right:8px">' + (i+1) + '.</span>' +
+      '<span class="fname">🤿 ' + f.n + '</span>' +
+      '<span class="fscore" style="margin-left:auto">◆ ' + f.s + '</span>' +
+      '<span class="fdel" data-id="' + f.id + '" title="Remove">✕</span>' +
+    '</div>';
+  }).join('');
+  fpList.querySelectorAll('.fdel').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
       e.stopPropagation();
       const id = btn.dataset.id;
-      friends = friends.filter(f => f.id !== id);
+      friends = friends.filter(function(f){ return f.id !== id; });
       saveFriends(); renderFriendsList();
     });
   });
@@ -466,47 +714,47 @@ function openFriendsPanel() {
   fpPanel.style.display = 'block';
 }
 
-myCodeDiv.addEventListener('click', () => {
+myCodeDiv.addEventListener('click', function() {
   const code = makeMyCode();
   myCodeDiv.textContent = code;
   if (navigator.clipboard) navigator.clipboard.writeText(code).catch(function(){});
   myCodeDiv.style.color = '#44ffaa';
-  setTimeout(() => myCodeDiv.style.color = '', 1000);
+  setTimeout(function(){ myCodeDiv.style.color = ''; }, 1200);
 });
 
-addFriendBtn.addEventListener('click', () => {
+addFriendBtn.addEventListener('click', function() {
   const code = friendCodeIn.value.trim();
   if (!code) return;
-  const data = parseCode(code);
-  if (!data || !data.id || !data.n) {
+  const fid = parseCode(code);
+  if (!fid || fid.length < 5) {
     fpMsg.textContent = lang === 'ru' ? '❌ Неверный код' : '❌ Invalid code';
     return;
   }
-  if (data.id === playerId) {
+  if (fid === playerId) {
     fpMsg.textContent = lang === 'ru' ? '😅 Это твой собственный код!' : '😅 That is your own code!';
     return;
   }
-  const existing = friends.findIndex(f => f.id === data.id);
-  if (existing >= 0) {
-    // Обновляем счёт если он выше
-    friends[existing].n = data.n;
-    friends[existing].s = data.s;
-    fpMsg.textContent = lang === 'ru' ? '✅ Рекорд друга обновлён!' : '✅ Friend score updated!';
-  } else {
-    friends.push({ id: data.id, n: data.n, s: data.s });
-    fpMsg.textContent = lang === 'ru' ? `✅ ${data.n} добавлен!` : `✅ ${data.n} added!`;
+  if (friends.find(function(f){ return f.id === fid; })) {
+    fpMsg.textContent = lang === 'ru' ? 'Уже в списке!' : 'Already added!';
+    return;
   }
+  // Добавляем с временными данными, Gun обновит сам
+  friends.push({ id: fid, n: '…', s: 0 });
   saveFriends();
+  subscribeFriend(fid); // сразу подписываемся — данные придут автоматически
+  // Уведомляем друга — пишем свой ID в его "входящие запросы"
+  sendFriendRequest(fid);
   friendCodeIn.value = '';
+  fpMsg.textContent = lang === 'ru' ? '✅ Добавлен! Загружаем данные…' : '✅ Added! Loading data…';
   renderFriendsList();
 });
 
-friendCodeIn.addEventListener('keydown', e => { if (e.key === 'Enter') addFriendBtn.click(); e.stopPropagation(); });
-friendCodeIn.addEventListener('keyup',   e => e.stopPropagation());
-friendCodeIn.addEventListener('mousedown', e => e.stopPropagation());
-friendCodeIn.addEventListener('touchstart', e => e.stopPropagation());
+friendCodeIn.addEventListener('keydown', function(e){ if (e.key === 'Enter') addFriendBtn.click(); e.stopPropagation(); });
+friendCodeIn.addEventListener('keyup',   function(e){ e.stopPropagation(); });
+friendCodeIn.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+friendCodeIn.addEventListener('touchstart', function(e){ e.stopPropagation(); });
 
-friendsClose.addEventListener('click', () => { fpPanel.style.display = 'none'; });
+friendsClose.addEventListener('click', function(){ fpPanel.style.display = 'none'; });
 
 // ─── Language ────────────────────────────────────────────────────────────────
 let lang = localStorage.getItem('deepdiver_lang') || 'en';
@@ -1386,10 +1634,14 @@ function joyUpdate(tx, ty) {
 }
 
 function checkMenuButtons(tx, ty) {
+  const hb = window._helpBtn;
+  if (hb && tx>=hb.x && tx<=hb.x+hb.w && ty>=hb.y && ty<=hb.y+hb.h) { openHelp(); return true; }
   const nb = window._nameBtn;
   if (nb && tx>=nb.x && tx<=nb.x+nb.w && ty>=nb.y && ty<=nb.y+nb.h) { openNameInput(); return true; }
   const fb = window._friendsBtn;
   if (fb && tx>=fb.x && tx<=fb.x+fb.w && ty>=fb.y && ty<=fb.y+fb.h) { openFriendsPanel(); return true; }
+  const lbBtn2 = window._lbBtn;
+  if (lbBtn2 && tx>=lbBtn2.x && tx<=lbBtn2.x+lbBtn2.w && ty>=lbBtn2.y && ty<=lbBtn2.y+lbBtn2.h) { openLeaderboard(); return true; }
   const lb = window._langBtn;
   if (lb && tx>=lb.x && tx<=lb.x+lb.w && ty>=lb.y && ty<=lb.y+lb.h) {
     lang = lang === 'en' ? 'ru' : 'en';
@@ -1701,25 +1953,33 @@ function drawMenu() {
     }
   }
   drawLangBtn();
+  drawHelpBtn();
   drawNameBtn();
   drawFriendsBtn();
+  drawLeaderboardBtn();
   drawFriendsLeaderboard();
 }
 
-function drawFriendsBtn() {
-  const label = lang === 'ru' ? '👥 Друзья' : '👥 Friends';
+function drawLeftBtn(label, byOffset, winKey) {
   ctx.save();
   ctx.font = 'bold 14px sans-serif';
   const tw = ctx.measureText(label).width;
-  const bw = tw + 28, bh = 32;
-  const bx = 12, by = 52; // под кнопкой никнейма
+  const bw = tw + 28, bh = 32, bx = 12, by = byOffset;
   ctx.fillStyle = 'rgba(255,255,255,.12)';
   ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
   ctx.fillText(label, bx + bw / 2, by + bh * 0.68);
   ctx.restore();
-  window._friendsBtn = { x: bx, y: by, w: bw, h: bh };
+  window[winKey] = { x: bx, y: by, w: bw, h: bh };
+}
+
+function drawFriendsBtn() {
+  drawLeftBtn(lang === 'ru' ? '👥 Друзья' : '👥 Friends', 52, '_friendsBtn');
+}
+
+function drawLeaderboardBtn() {
+  drawLeftBtn(lang === 'ru' ? '🏆 Чарт' : '🏆 Chart', 92, '_lbBtn');
 }
 
 function drawFriendsLeaderboard() {
@@ -1757,6 +2017,18 @@ function drawNameBtn() {
   ctx.fillText(label, bx + bw / 2, by + bh * 0.68);
   ctx.restore();
   window._nameBtn = { x: bx, y: by, w: bw, h: bh };
+}
+
+function drawHelpBtn() {
+  const bw = 38, bh = 32, bx = W - bw - 12, by = 52;
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,.12)';
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('?', bx + bw / 2, by + bh * 0.68);
+  ctx.restore();
+  window._helpBtn = { x: bx, y: by, w: bw, h: bh };
 }
 
 function drawLangBtn() {
