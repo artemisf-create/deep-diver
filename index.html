@@ -197,10 +197,59 @@
     #lbLoading { text-align:center; color:rgba(255,255,255,.4); padding:20px 0; font-size:14px; }
     #leaderboardPanel button { display:block; width:100%; background:rgba(255,220,80,.2); border:2px solid #ffe680; border-radius:8px; color:#fff; font:bold 15px sans-serif; padding:9px; cursor:pointer; }
     #leaderboardPanel button:hover { background:rgba(255,220,80,.4); }
+
+    /* ── Race panels ── */
+    .race-panel {
+      display: none; position: fixed; left:50%; top:50%;
+      transform: translate(-50%,-50%); z-index:10;
+      background: rgba(0,10,25,0.98); border-radius:16px;
+      padding:28px 32px; width:min(380px,92vw);
+      color:#fff; font-family:sans-serif; text-align:center;
+      box-shadow: 0 0 50px rgba(255,100,0,0.3);
+    }
+    #raceLookingPanel { border:2px solid #ff8800; }
+    #raceChallengePanel { border:2px solid #ff4444; }
+    #raceCountdownPanel { border:2px solid #44ffaa; }
+    .race-panel h2 { font-size:22px; margin-bottom:10px; }
+    .race-panel p  { color:rgba(255,255,255,.7); font-size:14px; margin-bottom:16px; }
+    .race-panel .spinner { font-size:36px; animation: spin 1s linear infinite; display:inline-block; margin-bottom:10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .race-panel .rbtn {
+      display:inline-block; margin:6px; padding:10px 24px;
+      border-radius:10px; border:2px solid; font:bold 15px sans-serif;
+      cursor:pointer; color:#fff;
+    }
+    .rbtn-green  { background:rgba(80,220,120,.25); border-color:#44dd88; }
+    .rbtn-green:hover  { background:rgba(80,220,120,.5); }
+    .rbtn-red    { background:rgba(220,60,60,.25);  border-color:#ff4444; }
+    .rbtn-red:hover    { background:rgba(220,60,60,.5); }
+    .rbtn-grey   { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.3); }
+    .rbtn-grey:hover   { background:rgba(255,255,255,.2); }
+    #raceCountNum { font-size:80px; font-weight:bold; color:#44ffaa; line-height:1; }
+  </style>
   </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+<!-- Race panels -->
+<div id="raceLookingPanel" class="race-panel">
+  <div class="spinner">🌀</div>
+  <h2 id="rlTitle">Looking for opponent…</h2>
+  <p id="rlSub">Searching for a free player</p>
+  <div class="rbtn rbtn-grey" id="rlCancel">Cancel</div>
+</div>
+<div id="raceChallengePanel" class="race-panel">
+  <div style="font-size:36px;margin-bottom:8px">⚡</div>
+  <h2 id="rcTitle">Challenge!</h2>
+  <p id="rcSub"></p>
+  <div class="rbtn rbtn-green" id="rcAccept">Accept</div>
+  <div class="rbtn rbtn-red"   id="rcReject">Decline</div>
+</div>
+<div id="raceCountdownPanel" class="race-panel">
+  <p id="rcdSub" style="font-size:16px;color:#aaffcc;margin-bottom:4px"></p>
+  <div id="raceCountNum">3</div>
+</div>
+
 <div id="helpPanel">
   <h2 id="helpTitle">❓ How to play</h2>
   <div class="section">
@@ -304,7 +353,7 @@ window.addEventListener('resize', () => {
   updateVP();
 });
 
-// в”Ђв”Ђв”Ђ Tile config в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Tile config в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 const T    = isMobile ? 28 : 48;
 let   ROWS = Math.ceil(H / T) + 2;
 const POOL = 800;                        // circular column buffer
@@ -317,7 +366,7 @@ const WALL = 1;
 let grid      = [];
 let decorData = [];  // grid[col % POOL][row] = decoration object or null
 
-// в”Ђв”Ђв”Ђ Generation state в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Generation state в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 let genCol  = 0;
 let pathY   = Math.floor(ROWS / 2);  // center row of corridor
 let pathH   = 3;                      // half-height (tiles)
@@ -391,6 +440,20 @@ function generateUntil(targetCol) {
 
     const pick = () => airRows[Math.floor(Math.random() * airRows.length)];
 
+    if (gameMode === 'race') {
+      // В режиме гонки: нитро каждые 10 колонок, без врагов, без жемчуга
+      if (genCol > 5 && genCol % 10 === 0 && Math.random() < 0.75) {
+        const r = pick();
+        if (!dec[r]) dec[r] = { type: 'nitro', phase: Math.random() * Math.PI * 2, collected: false };
+      }
+      // Финишный жемчуг ровно на 500м
+      const finishCol = Math.round(500 * 40 / T);
+      if (genCol === finishCol) {
+        const r = pick();
+        if (!dec[r]) dec[r] = { type: 'finish', phase: 0, collected: false };
+      }
+    } else {
+
     // Pearl — every ~6 cols
     if (genCol > 5 && genCol % 6 === 0 && Math.random() < 0.7) {
       const r = pick();
@@ -404,14 +467,14 @@ function generateUntil(targetCol) {
     }
 
     // Shark — spawns more often as difficulty rises
-    const sharkInterval = Math.round(30 - diff * 18);  // 30 в†' 12
+    const sharkInterval = Math.round(30 - diff * 18);  // 30 → 12
     if (genCol > 50 && genCol % sharkInterval === 0 && Math.random() < 0.6 + diff * 0.3) {
       const r = pick();
       if (!dec[r]) dec[r] = { type: 'shark', vy: (Math.random() < 0.5 ? 1 : -1) * (0.5 + diff * 1.2), py: r * T + T / 2, px: genCol * T + T / 2, vx: 0, aggroed: false };
     }
 
     // Jellyfish — spawns more with difficulty
-    const jellyInterval = Math.round(28 - diff * 15);  // 28 в†' 13
+    const jellyInterval = Math.round(28 - diff * 15);  // 28 → 13
     if (genCol > 70 && genCol % jellyInterval === 0 && Math.random() < 0.55 + diff * 0.35) {
       const r = pick();
       if (!dec[r]) dec[r] = { type: 'jelly', phase: Math.random() * Math.PI * 2, py: r * T + T / 2, px: genCol * T + T / 2, vx: 0, vy: 0, aggroed: false };
@@ -422,18 +485,19 @@ function generateUntil(targetCol) {
       const r = pick();
       if (!dec[r]) dec[r] = { type: 'mine', phase: Math.random() * Math.PI * 2 };
     }
+    } // end else (not race mode)
 
     genCol++;
   }
 }
 
-// в”Ђв”Ђв”Ђ Camera в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Camera в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 let camXpx   = 0;   // world-x of left edge
 let camYpx   = 0;   // world-y of top edge (follows player vertically)
 let camSpeed = isMobile ? 0.6 : 1.2; // auto-scroll px/frame
 let worldFrame = 0;
 
-// в”Ђв”Ђв”Ђ Player в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Player в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 const player = {
   x: 80,   // world x
   y: 200,  // world y
@@ -442,7 +506,7 @@ const player = {
   dead: false, invincible: 0,
 };
 
-// в”Ђв”Ђв”Ђ Game state в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Game state в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 let state   = 'menu';
 let score   = 0, hiScore = 0;
 let distM   = 0;   // distance in metres
@@ -513,8 +577,8 @@ const playersDB = gun.get('deepdiver-v1-players');
 
 // Публикуем свой рекорд в сеть
 function syncMyScore() {
-  if (!playerName) return;
-  playersDB.get(playerId).put({ n: playerName, s: hiScore, t: Date.now() });
+  const name = playerName || ('Diver#' + playerId.slice(-4));
+  playersDB.get(playerId).put({ n: name, s: hiScore, t: Date.now() });
 }
 
 let friends = JSON.parse(localStorage.getItem('deepdiver_friends') || '[]');
@@ -650,6 +714,231 @@ function openLeaderboard() {
 }
 
 lbClose.addEventListener('click', function(){ lbPanel.style.display = 'none'; });
+
+// ─── RACE / MULTIPLAYER ───────────────────────────────────────────────────────
+const lobbyDB = gun.get('deepdiver-v1-lobby');
+const raceDB  = gun.get('deepdiver-v1-race');
+
+let raceState    = 'idle';  // idle | looking | challenged | countdown | racing | finished
+let raceRoom     = null;    // { seed, opponentId, opponentName }
+let raceWinner   = null;    // 'me' | 'them'
+let nitro        = 0;       // charges 0-3
+let nitroActive  = 0;       // frames of boost remaining
+let opponentPos  = { x:200, y:200, vx:0, dist:0, nitro:0 };
+let raceSyncTimer = 0;
+let lobbyListener = null;
+
+// Seeded RNG — чтобы у обоих была одинаковая пещера
+function makeSeededRng(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+let raceRng = null;
+
+// Подменяем Math.random на seeded во время генерации пещеры
+function withSeededRng(seed, fn) {
+  raceRng = makeSeededRng(seed);
+  const orig = Math.random;
+  Math.random = raceRng;
+  fn();
+  Math.random = orig;
+}
+
+// --- Lobby ---
+function publishLobby(status) {
+  lobbyDB.get(playerId).put({ n: playerName || '???', t: Date.now(), st: status });
+}
+
+function lookForOpponent() {
+  raceState = 'looking';
+  publishLobby('waiting');
+  document.getElementById('raceLookingPanel').style.display = 'block';
+  updateRaceTexts();
+  // Слушаем лобби — ищем другого ожидающего игрока
+  if (lobbyListener) lobbyListener.off();
+  lobbyListener = lobbyDB.map().on(function(data, uid) {
+    if (raceState !== 'looking') return;
+    if (!data || !data.n || uid === playerId) return;
+    if (data.st !== 'waiting') return;
+    if (Date.now() - data.t > 20000) return; // игнорируем старые записи
+    // Вызов посылает только тот у кого ID меньше — избегаем дедлок
+    if (playerId < uid) sendChallenge(uid, data.n);
+  });
+}
+
+function cancelLooking() {
+  raceState = 'idle';
+  publishLobby('offline');
+  if (lobbyListener) { lobbyListener.off(); lobbyListener = null; }
+  document.getElementById('raceLookingPanel').style.display = 'none';
+}
+
+// --- Challenge ---
+function sendChallenge(toId, toName) {
+  raceState = 'waiting_response';
+  raceRoom = { opponentId: toId, opponentName: toName, seed: null };
+  raceDB.get(toId).get('ch').get(playerId).put({
+    from: playerId, n: playerName || '???', t: Date.now()
+  });
+  // Слушаем ответ
+  raceDB.get(playerId).get('resp').get(toId).on(function(data) {
+    if (!data || raceState !== 'waiting_response') return;
+    if (data.ok) {
+      raceRoom.seed = data.seed;
+      document.getElementById('raceLookingPanel').style.display = 'none';
+      publishLobby('offline');
+      startCountdown();
+    } else {
+      raceRoom = null; raceState = 'looking';
+      publishLobby('waiting');
+    }
+  });
+}
+
+// Слушаем входящие вызовы
+function listenRaceChallenges() {
+  raceDB.get(playerId).get('ch').map().on(function(data) {
+    if (!data || !data.from || !data.n) return;
+    if (raceState !== 'looking') return;
+    if (Date.now() - data.t > 20000) return;
+    raceState = 'challenged';
+    publishLobby('busy');
+    document.getElementById('raceLookingPanel').style.display = 'none';
+    const panel = document.getElementById('raceChallengePanel');
+    panel.style.display = 'block';
+    document.getElementById('rcSub').textContent = (lang === 'ru' ? 'от ' : 'from ') + data.n;
+    updateRaceTexts();
+    // Кнопки
+    document.getElementById('rcAccept').onclick = function() {
+      const seed = Date.now();
+      raceRoom = { opponentId: data.from, opponentName: data.n, seed };
+      raceDB.get(data.from).get('resp').get(playerId).put({ ok: true, seed, t: Date.now() });
+      panel.style.display = 'none';
+      publishLobby('offline');
+      startCountdown();
+    };
+    document.getElementById('rcReject').onclick = function() {
+      raceDB.get(data.from).get('resp').get(playerId).put({ ok: false, t: Date.now() });
+      panel.style.display = 'none';
+      raceState = 'idle';
+      publishLobby('offline');
+    };
+  });
+}
+listenRaceChallenges();
+
+// --- Countdown ---
+function startCountdown() {
+  raceState = 'countdown';
+  const panel = document.getElementById('raceCountdownPanel');
+  const numEl = document.getElementById('raceCountNum');
+  const subEl = document.getElementById('rcdSub');
+  subEl.textContent = (lang === 'ru' ? 'vs ' : 'vs ') + raceRoom.opponentName;
+  panel.style.display = 'block';
+  let n = 3;
+  numEl.textContent = n;
+  const iv = setInterval(function() {
+    n--;
+    if (n > 0) { numEl.textContent = n; }
+    else {
+      numEl.textContent = lang === 'ru' ? 'GO!' : 'GO!';
+      clearInterval(iv);
+      setTimeout(function() {
+        panel.style.display = 'none';
+        startRace();
+      }, 700);
+    }
+  }, 1000);
+}
+
+// --- Start race ---
+function startRace() {
+  gameMode = 'race';
+  raceState = 'racing';
+  raceWinner = null;
+  nitro = 0; nitroActive = 0;
+  opponentPos = { x: 200, y: 200, vx: 0, dist: 0, nitro: 0 };
+  // Генерируем пещеру с общим seed
+  withSeededRng(raceRoom.seed, function() {
+    initGrid();
+    genCol = 0; pathY = Math.floor(ROWS / 2); pathH = 3; branchCol = -1;
+    generateUntil(POOL);
+  });
+  camSpeed = isMobile ? 0.6 : 1.2;
+  const spawnCol = 2;
+  let spawnRow = Math.floor(ROWS / 2);
+  for (let delta = 0; delta < ROWS; delta++) {
+    const r1 = Math.floor(ROWS/2) + delta, r2 = Math.floor(ROWS/2) - delta;
+    if (r1 < ROWS && grid[spawnCol % POOL][r1] === AIR) { spawnRow = r1; break; }
+    if (r2 >= 0  && grid[spawnCol % POOL][r2] === AIR) { spawnRow = r2; break; }
+  }
+  player.x = spawnCol * T + T/2;
+  player.y = spawnRow * T + T/2;
+  updateVP();
+  camXpx = Math.max(0, player.x - VP.w/2);
+  camYpx = Math.max(0, player.y - VP.h/2);
+  player.vx = 0; player.vy = 0; player.dead = false; player.invincible = 0;
+  score = 0; distM = 0; oxygen = 100; oxyTick = 0;
+  lives = 3; lastCheckpointCamX = 0; lastCheckpointX = player.x;
+  lastCheckpointY = player.y; lastCheckpointDist = 0; nextCheckpointM = 60;
+  frame = 0; swimPhase = 0; particles = []; paused = false;
+  state = 'play';
+  // Слушаем позицию соперника
+  listenOpponentPos();
+}
+
+// --- Sync position ---
+function syncRacePos() {
+  if (!raceRoom || raceState !== 'racing') return;
+  raceDB.get('pos').get(raceRoom.opponentId + '_' + playerId).put({
+    x: Math.round(player.x), y: Math.round(player.y),
+    vx: Math.round(player.vx * 10) / 10,
+    dist: distM, nitro: nitro, t: Date.now()
+  });
+}
+
+function listenOpponentPos() {
+  raceDB.get('pos').get(playerId + '_' + raceRoom.opponentId).on(function(data) {
+    if (!data) return;
+    opponentPos.x    = data.x    || 0;
+    opponentPos.y    = data.y    || 0;
+    opponentPos.vx   = data.vx   || 0;
+    opponentPos.dist = data.dist || 0;
+    opponentPos.nitro= data.nitro|| 0;
+    // Соперник финишировал?
+    if (data.dist >= 500 && raceState === 'racing' && !raceWinner) {
+      raceWinner = 'them';
+      raceState = 'finished';
+      setTimeout(function(){ state = 'raceover'; }, 600);
+    }
+  });
+}
+
+// --- Nitro activation ---
+function activateNitro() {
+  if (nitro <= 0 || nitroActive > 0) return;
+  nitro--;
+  nitroActive = 90; // 1.5 сек буст
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.code === 'Space' && state === 'play' && gameMode === 'race') activateNitro();
+});
+
+// --- Race textsupdate ---
+function updateRaceTexts() {
+  const ru = lang === 'ru';
+  document.getElementById('rlTitle').textContent  = ru ? 'Ищем соперника…' : 'Looking for opponent…';
+  document.getElementById('rlSub').textContent    = ru ? 'Ищем свободного игрока' : 'Searching for a free player';
+  document.getElementById('rlCancel').textContent = ru ? 'Отмена' : 'Cancel';
+  document.getElementById('rcTitle').textContent  = ru ? 'Вызов на гонку!' : 'Race challenge!';
+  document.getElementById('rcAccept').textContent = ru ? 'Принять' : 'Accept';
+  document.getElementById('rcReject').textContent = ru ? 'Отклонить' : 'Decline';
+}
+document.getElementById('rlCancel').addEventListener('click', cancelLooking);
 
 // Код = просто playerId в base64 (имя/рекорд берём из Gun автоматически)
 function makeMyCode() {
@@ -814,7 +1103,7 @@ let oxyTick = 0;
 let frame   = 0, swimPhase = 0;
 let particles = [];
 
-// в”Ђв”Ђв”Ђ Input в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Input в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 const keys  = {};
 const mouse = { x: W / 2, y: H / 2, down: false };
 
@@ -828,6 +1117,7 @@ document.addEventListener('keydown', e => {
     else if (state === 'win') startGame();
     else if (state === 'levelup') { level++; wins = 0; saveProgress(); startGame(); }
   }
+  if (state === 'raceover' && (e.key === ' ' || e.key === 'Enter')) { state = 'menu'; gameMode = 'campaign'; raceState = 'idle'; raceRoom = null; }
   if (e.key === ' ') e.preventDefault();
 });
 document.addEventListener('keyup', e => { keys[e.key] = false; });
@@ -879,7 +1169,7 @@ canvas.addEventListener('mousedown', e => {
 canvas.addEventListener('mouseup', () => { mouse.down = false; });
 // Touch handlers — consolidated below near dpad code
 
-// в”Ђв”Ђв”Ђ Start / Reset в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Start / Reset в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 function startGame() {
   initGrid();
   genCol = 0; pathY = Math.floor(ROWS / 2); pathH = 3; branchCol = -1;
@@ -918,7 +1208,7 @@ function fullReset() {
   startGame();
 }
 
-// в”Ђв”Ђв”Ђ Helpers в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Helpers в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 function rand(a, b) { return a + Math.random() * (b - a); }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
@@ -946,7 +1236,7 @@ function collidesWall(wx, wy, hw, hh) {
   return corners.some(([x, y]) => tileAt(x, y) === WALL);
 }
 
-// в”Ђв”Ђв”Ђ Update в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Update в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 function drawPause() {
   // Р'СЃС' РІ СЌРєСЂР°РЅРЅС‹С… РєРѕРѕСЂРґРёРЅР°С‚Р°С…
   const sx = VP.x, sy = VP.y, sw = VP.w, sh = VP.h;
@@ -986,7 +1276,9 @@ function update() {
       camSpeed = 0;
       distM = Math.floor(player.x / 40);
     } else {
-      camSpeed = Math.min(isMobile ? 2.0 : 4.0, camSpeed + 0.0004);
+      const nitroBoost = (gameMode === 'race' && nitroActive > 0) ? 3.5 : 0;
+      if (nitroActive > 0) nitroActive--;
+      camSpeed = Math.min(isMobile ? 2.0 : 4.0, camSpeed + 0.0004) + nitroBoost;
       camXpx  += camSpeed;
       distM    = Math.floor(camXpx / 40);
     }
@@ -1005,7 +1297,7 @@ function update() {
   if (!player.dead && oxyTick % 95 === 0) oxygen = Math.max(0, oxygen - 1);
   if (oxygen <= 0 && !player.dead) killPlayer();
 
-  // в”Ђв”Ђ Player movement в”Ђв”Ђ
+  // в"Ђв"Ђ Player movement в"Ђв"Ђ
   const ACCEL = 0.55 + Math.floor(distM / 100) * 0.1, FRIC = 0.84;
   let ax = 0, ay = 0;
 
@@ -1074,7 +1366,7 @@ function update() {
 
   if (player.invincible > 0) player.invincible--;
 
-  // в”Ђв”Ђ Collectibles & enemies в”Ђв”Ђ
+  // в"Ђв"Ђ Collectibles & enemies в"Ђв"Ђ
   const colLo = Math.floor(camXpx / T) - 1;
   const colHi = Math.floor((camXpx + W) / T) + 1;
 
@@ -1103,6 +1395,27 @@ function update() {
         if (dx*dx + dy*dy < (player.hw + 9)**2) {
           d.collected = true; oxygen = Math.min(100, oxygen + 12.5);
           spawnFx(wx, wy, '#80dfff', 8);
+        }
+      }
+
+      if (d.type === 'nitro' && !d.collected) {
+        const dx = player.x - wx, dy = player.y - wy;
+        if (dx*dx + dy*dy < (player.hw + 10)**2) {
+          d.collected = true; nitro = Math.min(3, nitro + 1);
+          spawnFx(wx, wy, '#ff8800', 10);
+        }
+      }
+
+      if (d.type === 'finish' && !d.collected) {
+        const dx = player.x - wx, dy = player.y - wy;
+        if (dx*dx + dy*dy < (player.hw + 20)**2) {
+          d.collected = true;
+          if (gameMode === 'race' && raceState === 'racing' && !raceWinner) {
+            raceWinner = 'me';
+            raceState = 'finished';
+            spawnFx(wx, wy, '#ffe680', 20);
+            setTimeout(function(){ state = 'raceover'; }, 800);
+          }
         }
       }
 
@@ -1195,6 +1508,12 @@ function update() {
   }
   particles = particles.filter(p => p.life > 0);
 
+  // Race sync
+  if (gameMode === 'race' && raceState === 'racing') {
+    raceSyncTimer++;
+    if (raceSyncTimer % 6 === 0) syncRacePos(); // ~10 раз в сек
+  }
+
   // Win condition — 1000 metres (С‚РѕР»СЊРєРѕ РІ РїСЂРѕС…РѕР¶РґРµРЅРёРё)
   if (gameMode === 'campaign' && !player.dead && distM >= 500) {
     player.dead = true;
@@ -1264,7 +1583,7 @@ function killPlayer() {
   }
 }
 
-// в”Ђв”Ђв”Ђ Draw в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Draw в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 function drawBackground() {
   const depthRatio = clamp(distM / 400, 0, 1);
   const g = ctx.createLinearGradient(0, 0, 0, VP.h);
@@ -1385,6 +1704,31 @@ function drawEntities() {
         g.addColorStop(0, `rgba(255,255,230,${.9+shine*.1})`);
         g.addColorStop(1, 'rgba(200,170,100,.6)');
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0,0,11,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+
+      if (d.type === 'nitro' && !d.collected) {
+        ctx.save(); ctx.translate(sx, baseY);
+        const ng = ctx.createRadialGradient(0,0,2,0,0,14);
+        ng.addColorStop(0,'rgba(255,180,0,0.9)'); ng.addColorStop(1,'rgba(255,80,0,0.2)');
+        ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(0,0,14,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#ff8800'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0,0,14,0,Math.PI*2); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('N²', 0, 4);
+        ctx.restore();
+      }
+
+      if (d.type === 'finish' && !d.collected) {
+        ctx.save(); ctx.translate(sx, baseY);
+        const pulse = 0.7 + 0.3 * Math.sin(worldFrame * 0.1);
+        ctx.shadowColor = '#ffe680'; ctx.shadowBlur = 30 * pulse;
+        const fg = ctx.createRadialGradient(-4,-4,2,0,0,22);
+        fg.addColorStop(0,'rgba(255,255,180,0.95)'); fg.addColorStop(1,'rgba(200,150,0,0.4)');
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0,0,22,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('🏁', 0, 6);
+        ctx.shadowBlur = 0;
         ctx.restore();
       }
 
@@ -1539,6 +1883,85 @@ function drawPlayer() {
   ctx.restore();
 }
 
+function drawOpponent() {
+  if (gameMode !== 'race' || raceState !== 'racing') return;
+  const sx = opponentPos.x - camXpx;
+  const sy = opponentPos.y - camYpx;
+  if (sx < -60 || sx > W + 60) return;
+  ctx.save(); ctx.translate(sx, sy); ctx.scale(1.5, 1.5);
+  ctx.globalAlpha = 0.75;
+  // Окраска красная чтобы отличать от своего
+  ctx.fillStyle = '#5c0d0d';
+  ctx.beginPath(); ctx.roundRect(-8, -8, 18, 16, 4); ctx.fill();
+  ctx.fillStyle = '#cc2200'; ctx.beginPath(); ctx.arc(10, 0, 9, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,100,80,.5)'; ctx.beginPath(); ctx.ellipse(11,0,5,6.5,Math.PI/2,-0.3,Math.PI+0.3); ctx.fill();
+  ctx.fillStyle = '#cc6600';
+  ctx.beginPath(); ctx.ellipse(-16,4,8,4,-0.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-14,-3,8,4,0.4,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  // Имя над ним
+  ctx.save();
+  ctx.fillStyle = '#ffaaaa'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(raceRoom ? raceRoom.opponentName : '???', sx, sy - 28);
+  ctx.restore();
+}
+
+function drawRaceHUD() {
+  if (gameMode !== 'race') return;
+  const ru = lang === 'ru';
+  // Нитро бар
+  const bx = VP.w/2 - 60, by = VP.h - 36, bw = 120, bh = 18;
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 8); ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const filled = i < nitro;
+    const cx2 = bx + 8 + i * 38;
+    ctx.fillStyle = filled ? (nitroActive > 0 ? '#ffdd00' : '#ff8800') : 'rgba(255,255,255,.15)';
+    ctx.beginPath(); ctx.roundRect(cx2, by+3, 32, bh-6, 5); ctx.fill();
+    if (filled) {
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('N²', cx2+16, by+13);
+    }
+  }
+  if (nitroActive > 0) {
+    ctx.fillStyle = 'rgba(255,150,0,.18)'; ctx.fillRect(0,0,VP.w,VP.h);
+  }
+  // Индикатор соперника
+  const myX = player.x, oppX = opponentPos.x || 0;
+  const diff2 = myX - oppX;
+  const diffM = Math.round(diff2 / 40);
+  const label2 = diffM > 0
+    ? (ru ? '+'+diffM+'м впереди' : '+'+diffM+'m ahead')
+    : (diffM < 0 ? (ru ? Math.abs(diffM)+'м сзади' : Math.abs(diffM)+'m behind') : (ru ? 'рядом' : 'tied'));
+  const col = diffM > 0 ? '#44ffaa' : diffM < 0 ? '#ff6666' : '#ffee44';
+  ctx.fillStyle = col; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('🏁 ' + label2, VP.w/2, VP.h - 44);
+  // Space = нитро подсказка
+  if (nitro > 0 && !isMobile) {
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '11px sans-serif';
+    ctx.fillText(ru ? '[ПРОБЕЛ] — нитро' : '[SPACE] — nitro', VP.w/2, VP.h - 58);
+  }
+}
+
+function drawRaceOver() {
+  const won = raceWinner === 'me';
+  const ru = lang === 'ru';
+  ctx.fillStyle = 'rgba(0,0,0,.8)'; ctx.fillRect(0,0,W,H);
+  const titleSz = Math.round(Math.min(60, H*0.13));
+  ctx.textAlign = 'center';
+  ctx.fillStyle = won ? '#44ffaa' : '#ff4444';
+  ctx.font = 'bold '+titleSz+'px sans-serif';
+  ctx.shadowColor = won ? '#00ff88' : '#ff0000'; ctx.shadowBlur = 28;
+  ctx.fillText(won ? (ru?'🏆 ПОБЕДА!':'🏆 YOU WIN!') : (ru?'😔 ПОРАЖЕНИЕ':'😔 YOU LOSE'), W/2, H*0.28);
+  ctx.shadowBlur = 0;
+  const ts = Math.round(titleSz*0.45);
+  ctx.fillStyle = '#fff'; ctx.font = ts+'px sans-serif';
+  ctx.fillText((ru?'Дистанция: ':'Distance: ')+distM+'m', W/2, H*0.44);
+  ctx.fillStyle = '#aaddff'; ctx.font = (ts*0.8)+'px sans-serif';
+  ctx.fillText(ru?'[ ПРОБЕЛ / тап ] — в меню':'[ SPACE / tap ] — main menu', W/2, H*0.62);
+}
+
 function drawParticles() {
   for (const p of particles) {
     ctx.save(); ctx.globalAlpha = p.life;
@@ -1548,7 +1971,7 @@ function drawParticles() {
   }
 }
 
-// в”Ђв”Ђв”Ђ Mobile D-pad в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Mobile D-pad в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 function dpadButtons() {
   const s = DPAD.size, g = DPAD.gap;
   const margin = 10;
@@ -1586,7 +2009,7 @@ function drawMobileControls() {
     }
   } else {
     // Joystick
-    // Р”Р¶РѕР№СЃС‚РёРє РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РЅР° СѓСЂРѕРІРЅРµ С†РµРЅС‚СЂР° РєСЂРµСЃС‚РѕРІРёРЅС‹ D-pad
+    // Р"Р¶РѕР№СЃС‚РёРє РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РЅР° СѓСЂРѕРІРЅРµ С†РµРЅС‚СЂР° РєСЂРµСЃС‚РѕРІРёРЅС‹ D-pad
     const _s = DPAD.size, _g = DPAD.gap;
     const _my = (VP.y + VP.h) - _s * 3 - _g * 2 - 10;
     const dpadCenterY = _my + _s + _g + _s / 2;
@@ -1642,6 +2065,8 @@ function checkMenuButtons(tx, ty) {
   if (fb && tx>=fb.x && tx<=fb.x+fb.w && ty>=fb.y && ty<=fb.y+fb.h) { openFriendsPanel(); return true; }
   const lbBtn2 = window._lbBtn;
   if (lbBtn2 && tx>=lbBtn2.x && tx<=lbBtn2.x+lbBtn2.w && ty>=lbBtn2.y && ty<=lbBtn2.y+lbBtn2.h) { openLeaderboard(); return true; }
+  const rbtn = window._raceBtn;
+  if (rbtn && tx>=rbtn.x && tx<=rbtn.x+rbtn.w && ty>=rbtn.y && ty<=rbtn.y+rbtn.h) { lookForOpponent(); return true; }
   const lb = window._langBtn;
   if (lb && tx>=lb.x && tx<=lb.x+lb.w && ty>=lb.y && ty<=lb.y+lb.h) {
     lang = lang === 'en' ? 'ru' : 'en';
@@ -1756,7 +2181,7 @@ function drawHUD() {
   const diffCol = diff < 0.25 ? '#88ff88' : diff < 0.5 ? '#ffee44' : diff < 0.75 ? '#ff9944' : '#ff4444';
 
   if (isMobile) {
-    // в”Ђв”Ђ РљРѕРјРїР°РєС‚РЅС‹Р№ HUD — С‚РѕРЅРєР°СЏ РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅР°СЏ РїРѕР»РѕСЃРєР° СЃРІРµСЂС…Сѓ в”Ђв”Ђ
+    // в"Ђв"Ђ РљРѕРјРїР°РєС‚РЅС‹Р№ HUD — С‚РѕРЅРєР°СЏ РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅР°СЏ РїРѕР»РѕСЃРєР° СЃРІРµСЂС…Сѓ в"Ђв"Ђ
     const ph = 26, py = 0;
     // O₂ Р±Р°СЂ РїРѕ С†РµРЅС‚СЂСѓ — РїРѕР»РѕРІРёРЅР° С€РёСЂРёРЅС‹ РїРѕР»РѕСЃС‹
     const bw = VP.w * 0.5, bh = ph, bx2 = cx - bw / 2, by2 = py;
@@ -1769,7 +2194,7 @@ function drawHUD() {
     ctx.fillStyle = 'rgba(0,0,0,.88)';
     ctx.fillRect(bx2, py, bw, ph);
 
-    // Р”РёСЃС‚Р°РЅС†РёСЏ СЃР»РµРІР°, СЃС‡С'С‚ СЃРїСЂР°РІР°
+    // Р"РёСЃС‚Р°РЅС†РёСЏ СЃР»РµРІР°, СЃС‡С'С‚ СЃРїСЂР°РІР°
     ctx.fillStyle = '#88ddff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'left';
     ctx.fillText(`➡${distM}m`, 6, py + 10);
     ctx.fillStyle = '#ffe680'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'right';
@@ -1786,7 +2211,7 @@ function drawHUD() {
     ctx.shadowBlur = 0;
 
   } else {
-    // в”Ђв”Ђ РџРѕР»РЅС‹Р№ HUD РґР»СЏ РґРµСЃРєС‚РѕРїР° — РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅР°СЏ РїРѕР»РѕСЃРєР° СЃРІРµСЂС…Сѓ в”Ђв”Ђ
+    // в"Ђв"Ђ РџРѕР»РЅС‹Р№ HUD РґР»СЏ РґРµСЃРєС‚РѕРїР° — РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅР°СЏ РїРѕР»РѕСЃРєР° СЃРІРµСЂС…Сѓ в"Ђв"Ђ
     const panelH = 42, panelY = 0;
     ctx.fillStyle = 'rgba(0,0,0,.6)';
     ctx.fillRect(0, panelY, VP.w, panelH);
@@ -1823,7 +2248,7 @@ function drawHUD() {
     ctx.fillText(t('danger_bar')(Math.round(diff*5)), cx, ty + 18);
   }
 
-  // в”Ђв”Ђ Low O₂ warning в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  // в"Ђв"Ђ Low O₂ warning в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
   if (oxygen < 25 && Math.floor(frame/20)%2===0) {
     ctx.fillStyle = 'rgba(255,80,60,.15)'; ctx.fillRect(0, 0, VP.w, VP.h);
     ctx.fillStyle = '#ff5544'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
@@ -1847,7 +2272,7 @@ function drawMenu() {
   }
 
   if (compact) {
-    // в”Ђв”Ђ Р“РѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№ С‚РµР»РµС„РѕРЅ: РґРІСѓС…РєРѕР»РѕРЅРѕС‡РЅС‹Р№ layout в”Ђв”Ђ
+    // в"Ђв"Ђ Р"РѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅС‹Р№ С‚РµР»РµС„РѕРЅ: РґРІСѓС…РєРѕР»РѕРЅРѕС‡РЅС‹Р№ layout в"Ђв"Ђ
     const lx = W * 0.27, rx = W * 0.73; // Р»РµРІР°СЏ Рё РїСЂР°РІР°СЏ РєРѕР»РѕРЅРєРё
 
     // Р›РµРІР°СЏ РєРѕР»РѕРЅРєР°: Р·Р°РіРѕР»РѕРІРѕРє + РѕРїРёСЃР°РЅРёРµ
@@ -1893,7 +2318,7 @@ function drawMenu() {
     }
 
   } else {
-    // в”Ђв”Ђ Р”РµСЃРєС‚РѕРї / РїРѕСЂС‚СЂРµС‚РЅС‹Р№ С‚РµР»РµС„РѕРЅ: РѕРґРЅРѕРєРѕР»РѕРЅРѕС‡РЅС‹Р№ layout в”Ђв”Ђ
+    // в"Ђв"Ђ Р"РµСЃРєС‚РѕРї / РїРѕСЂС‚СЂРµС‚РЅС‹Р№ С‚РµР»РµС„РѕРЅ: РѕРґРЅРѕРєРѕР»РѕРЅРѕС‡РЅС‹Р№ layout в"Ђв"Ђ
     const titleSize = Math.round(Math.min(40, H * 0.08));
 
     // Р—Р°РіРѕР»РѕРІРѕРє Рё РїРѕРґР·Р°РіРѕР»РѕРІРѕРє
@@ -1957,6 +2382,7 @@ function drawMenu() {
   drawNameBtn();
   drawFriendsBtn();
   drawLeaderboardBtn();
+  drawRaceBtn();
   drawFriendsLeaderboard();
 }
 
@@ -1980,6 +2406,10 @@ function drawFriendsBtn() {
 
 function drawLeaderboardBtn() {
   drawLeftBtn(lang === 'ru' ? '🏆 Чарт' : '🏆 Chart', 92, '_lbBtn');
+}
+
+function drawRaceBtn() {
+  drawLeftBtn(lang === 'ru' ? '🏁 Гонка' : '🏁 Race', 132, '_raceBtn');
 }
 
 function drawFriendsLeaderboard() {
@@ -2084,7 +2514,7 @@ function drawDead() {
   }
 
   if (compact) {
-    // Р”РІРµ РєРѕР»РѕРЅРєРё
+    // Р"РІРµ РєРѕР»РѕРЅРєРё
     const lx = W * 0.30, rx = W * 0.70;
     ctx.fillStyle = '#ffe680'; ctx.font = `${textSz}px sans-serif`;
     ctx.fillText(`${t('score_lbl')}: ${score}`, lx, H * 0.42);
@@ -2173,7 +2603,7 @@ function drawLevelUp() {
   ctx.fillText(t('lets_go'), W/2, H * 0.76);
 }
 
-// в”Ђв”Ђв”Ђ Main loop в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// в"Ђв"Ђв"Ђ Main loop в"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђв"Ђ
 function loop() {
   try {
   worldFrame++;
@@ -2200,9 +2630,11 @@ function loop() {
     // Р Р°РјРєР° Рё UI РїРѕРІРµСЂС… (РІ СЌРєСЂР°РЅРЅС‹С… РєРѕРѕСЂРґРёРЅР°С‚Р°С…)
     // drawBorder(); — СѓР±СЂР°РЅРѕ
     if (paused) drawPause();
-    if (state === 'dead')    drawDead();
-    if (state === 'win')     drawWin();
-    if (state === 'levelup') drawLevelUp();
+    if (state === 'dead')     drawDead();
+    if (state === 'win')      drawWin();
+    if (state === 'levelup')  drawLevelUp();
+    if (state === 'raceover') drawRaceOver();
+    if (gameMode === 'race')  { drawOpponent(); drawRaceHUD(); }
     drawMobileControls();
   }
   } catch(e) {
