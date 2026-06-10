@@ -1,7 +1,7 @@
 // main.js — entry point: startGame, fullReset, loop, init
 import { S } from './state.js';
-import { loadProgress, saveProgress } from './db.js';
-import { initAbly, syncMyScore, syncRacePos, activateNitro, openLeaderboard, openFriendsPanel, renderFriendsList } from './network.js';
+import { loadProgress, saveProgress, fbSaveScore, fbSetPresence, fsUpdateLeaderboard } from './db.js';
+import { initAbly, initFirebaseAuth, syncMyScore, syncRacePos, startRaceFirebase, activateNitro, openLeaderboard, openFriendsPanel, renderFriendsList } from './network.js';
 import { initGrid, generateUntil, withSeededRng, updateVP, update } from './physics.js';
 import {
   drawBackground, drawTiles, drawCheckpoints, drawEntities, drawPlayer, drawOpponent,
@@ -23,6 +23,7 @@ S.pathY  = Math.floor(S.ROWS / 2);
 updateVP();
 
 // ─── Player identity ──────────────────────────────────────────────────────────
+// Сначала используем локальный ID как fallback; Firebase Auth перезапишет его своим uid
 let pid = localStorage.getItem('deepdiver_pid');
 if (!pid) {
   pid = 'p' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
@@ -106,20 +107,27 @@ function startRace(raceRoom) {
   S.frame=0; S.swimPhase=0; S.particles=[]; S.paused=false;
   S.state='play';
 
-  // Subscribe to opponent position
+  // Subscribe to opponent position — Firebase приоритет, Ably fallback
   const roomId = [S.playerId, raceRoom.opponentId].sort().join('_');
-  S.ablyRaceChannel = S.ably.channels.get('deepdiver:race:' + roomId);
-  S.ablyRaceChannel.subscribe('pos', function (msg) {
-    const d = msg.data;
-    if (!d || d.id === S.playerId) return;
-    S.opponentPos.x = d.x || 0; S.opponentPos.y = d.y || 0;
-    S.opponentPos.vx = d.vx || 0; S.opponentPos.dist = d.dist || 0;
-    S.opponentPos.nitro = d.nitro || 0;
-    if (d.dist >= 500 && S.raceState === 'racing' && !S.raceWinner) {
-      S.raceWinner = 'them'; S.raceState = 'finished';
-      setTimeout(function () { S.state = 'raceover'; }, 600);
-    }
-  });
+
+  if (window.firebaseDB) {
+    // Firebase RTDB race
+    startRaceFirebase(roomId);
+  } else if (S.ably) {
+    // Ably fallback
+    S.ablyRaceChannel = S.ably.channels.get('deepdiver:race:' + roomId);
+    S.ablyRaceChannel.subscribe('pos', function (msg) {
+      const d = msg.data;
+      if (!d || d.id === S.playerId) return;
+      S.opponentPos.x = d.x || 0; S.opponentPos.y = d.y || 0;
+      S.opponentPos.vx = d.vx || 0; S.opponentPos.dist = d.dist || 0;
+      S.opponentPos.nitro = d.nitro || 0;
+      if (d.dist >= 500 && S.raceState === 'racing' && !S.raceWinner) {
+        S.raceWinner = 'them'; S.raceState = 'finished';
+        setTimeout(function () { S.state = 'raceover'; }, 600);
+      }
+    });
+  }
 }
 
 // ─── Name input ───────────────────────────────────────────────────────────────
@@ -218,5 +226,11 @@ function loop() {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 initGrid();
 generateUntil(S.POOL);
-setTimeout(() => initAbly(), 1000);
+
+// Firebase Auth — запускаем сразу, не блокирует UI
+initFirebaseAuth().catch(function (e) { console.warn('[Boot] Firebase auth error:', e); });
+
+// Ably — запускаем с задержкой как fallback
+setTimeout(function () { initAbly(); }, 1000);
+
 requestAnimationFrame(loop);

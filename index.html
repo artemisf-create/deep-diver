@@ -16,6 +16,38 @@
   <meta property="og:url" content="https://artemisf-create.github.io/deep-diver">
   <link rel="canonical" href="https://artemisf-create.github.io/deep-diver">
   <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+
+  <!-- Firebase v10 compat (для простоты — глобальный firebase.*) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    // ── Firebase конфиг ── замени REPLACE_WITH_... своими данными из Firebase Console ──
+    var firebaseConfig = {
+      apiKey:            "REPLACE_WITH_YOUR_API_KEY",
+      authDomain:        "REPLACE_WITH_YOUR_PROJECT.firebaseapp.com",
+      databaseURL:       "https://REPLACE_WITH_YOUR_PROJECT-default-rtdb.firebaseio.com",
+      projectId:         "REPLACE_WITH_YOUR_PROJECT",
+      storageBucket:     "REPLACE_WITH_YOUR_PROJECT.appspot.com",
+      messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+      appId:             "REPLACE_WITH_YOUR_APP_ID"
+    };
+    // Инициализируем только если конфиг заполнен
+    if (firebaseConfig.apiKey !== "REPLACE_WITH_YOUR_API_KEY") {
+      try {
+        window.firebaseApp  = firebase.initializeApp(firebaseConfig);
+        window.firebaseAuth = firebase.auth();
+        window.firebaseDB   = firebase.database();
+        window.firebaseFS   = firebase.firestore();
+        console.log('[Firebase] initialized');
+      } catch (e) {
+        console.warn('[Firebase] init error:', e);
+      }
+    } else {
+      console.info('[Firebase] config not set — running without Firebase');
+    }
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
@@ -319,6 +351,6 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 }
 </script>
 
-<script type="module" src="src/main.js?v=2"></script>
+<script type="module" src="src/main.js?v=3"></script>
 </body>
 </html>

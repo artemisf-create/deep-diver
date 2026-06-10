@@ -1,6 +1,28 @@
-// network.js — Ably real-time: scores, friends, race matchmaking
+// network.js — Firebase (primary) + Ably (fallback): scores, friends, race matchmaking
 import { S } from './state.js';
-import { saveFriends, saveAllPlayers, seedAllPlayers } from './db.js';
+import { saveFriends, saveAllPlayers, seedAllPlayers, fbSaveScore, fbSetPresence, fbLoadLeaderboard, fbUnloadLeaderboard, fbCountOnline } from './db.js';
+
+// ─── Firebase Auth ────────────────────────────────────────────────────────────
+
+/**
+ * Анонимный вход в Firebase.
+ * После успешного входа обновляет S.playerId и вызывает fbSetPresence().
+ * Если Firebase не настроен — тихо возвращается (используется локальный ID).
+ */
+export async function initFirebaseAuth() {
+  if (!window.firebaseAuth) return;
+  try {
+    const result = await window.firebaseAuth.signInAnonymously();
+    S.playerId = result.user.uid;
+    localStorage.setItem('deepdiver_pid', S.playerId);
+    console.log('[FB Auth] signed in as', S.playerId);
+    fbSetPresence();
+    // Если уже есть рекорд — сразу синхронизируем
+    if (S.hiScore > 0) fbSaveScore();
+  } catch (e) {
+    console.warn('[FB Auth] anonymous sign-in failed, using local ID:', e.message);
+  }
+}
 
 // ─── Ably init ────────────────────────────────────────────────────────────────
 export function initAbly() {
@@ -63,36 +85,29 @@ export function onScoreReceived(data) {
 }
 
 // ─── Leaderboard ──────────────────────────────────────────────────────────────
-export function renderLeaderboard() {
-  const ru = S.lang === 'ru';
-  seedAllPlayers();
-  const now = Date.now();
-  let onlineCount = 0;
-  Object.values(S.allPlayers).forEach(function (p) {
-    if (p.me || (p.t && now - p.t < 15000)) onlineCount++;
-  });
-  const rows = Object.entries(S.allPlayers)
-    .map(function (e) { return { id: e[0], n: e[1].n, s: e[1].s, me: e[1].me, friend: e[1].friend }; })
-    .sort(function (a, b) { return b.s - a.s; })
-    .slice(0, 100);
 
-  const lbList    = document.getElementById('lbList');
-  const lbSub     = document.getElementById('lbSubtitle');
+/** Рисует строки лидерборда из переданного массива rows */
+function renderLeaderboardRows(rows, onlineCount, connected) {
+  const ru      = S.lang === 'ru';
+  const lbList  = document.getElementById('lbList');
+  const lbSub   = document.getElementById('lbSubtitle');
 
   if (!rows.length) {
     lbList.innerHTML = '<div id="lbLoading">' + (ru ? 'Нет данных' : 'No data yet') + '</div>';
     return;
   }
-  const myRank = rows.findIndex(function (r) { return r.me; });
+  const myRank = rows.findIndex(function (r) { return r.id === S.playerId; });
   lbList.innerHTML = rows.map(function (r, i) {
-    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
-    const tag   = r.me?(ru?' 👤вы':' 👤you'):r.friend?' 🤝':'';
-    const cls   = r.me?'lr me':r.friend?'lr friend':'lr';
+    const isMe     = r.id === S.playerId;
+    const isFriend = S.friends.some(function (f) { return f.id === r.id; });
+    const medal    = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+    const tag      = isMe?(ru?' 👤вы':' 👤you'):isFriend?' 🤝':'';
+    const cls      = isMe?'lr me':isFriend?'lr friend':'lr';
     return '<div class="'+cls+'"><span class="lrank">'+medal+'</span>' +
       '<span class="lname">🤿 '+r.n+'<span class="ltag">'+tag+'</span></span>' +
       '<span class="lscore">◆ '+r.s+'</span></div>';
   }).join('');
-  const connected = S.ably && S.ably.connection && S.ably.connection.state === 'connected';
+
   const connStatus = connected
     ? (ru ? '🟢 '+onlineCount+' онлайн' : '🟢 '+onlineCount+' online')
     : (ru ? '🔴 нет связи' : '🔴 offline');
@@ -102,6 +117,24 @@ export function renderLeaderboard() {
     + ' · ' + connStatus;
 }
 
+/** Рисует лидерборд из локального S.allPlayers (Ably / localStorage) */
+export function renderLeaderboard() {
+  const ru = S.lang === 'ru';
+  seedAllPlayers();
+  const now = Date.now();
+  let onlineCount = 0;
+  Object.values(S.allPlayers).forEach(function (p) {
+    if (p.me || (p.t && now - p.t < 15000)) onlineCount++;
+  });
+  const rows = Object.entries(S.allPlayers)
+    .map(function (e) { return { id: e[0], n: e[1].n, s: e[1].s }; })
+    .sort(function (a, b) { return b.s - a.s; })
+    .slice(0, 100);
+
+  const connected = S.ably && S.ably.connection && S.ably.connection.state === 'connected';
+  renderLeaderboardRows(rows, onlineCount, connected);
+}
+
 export function openLeaderboard() {
   const ru = S.lang === 'ru';
   document.getElementById('lbTitle').textContent = ru ? '🏆 Таблица лидеров' : '🏆 Leaderboard';
@@ -109,6 +142,36 @@ export function openLeaderboard() {
   const lbPanel = document.getElementById('leaderboardPanel');
   lbPanel.style.display = 'flex';
 
+  // ── Firebase приоритет ──
+  if (window.firebaseDB) {
+    document.getElementById('lbSubtitle').textContent = ru ? 'Загрузка…' : 'Loading…';
+    let onlineCount = 0;
+
+    // Считаем онлайн-игроков
+    fbCountOnline(function (n) { onlineCount = n; });
+
+    // Подписываемся на топ-100 из RTDB
+    fbLoadLeaderboard(function (rows) {
+      // Убедимся, что наши данные есть
+      if (!rows.find(function (r) { return r.id === S.playerId; }) && S.hiScore > 0) {
+        rows.push({ id: S.playerId, n: S.playerName || ('Diver#' + S.playerId.slice(-4)), s: S.hiScore });
+        rows.sort(function (a, b) { return b.s - a.s; });
+      }
+      renderLeaderboardRows(rows, onlineCount, true);
+    });
+
+    // Отписываемся при закрытии панели
+    var fbLbInterval = setInterval(function () {
+      if (lbPanel.style.display === 'none') {
+        clearInterval(fbLbInterval);
+        fbUnloadLeaderboard();
+        window.firebaseDB.ref('presence').off('value');
+      }
+    }, 1000);
+    return;
+  }
+
+  // ── Fallback: Ably ──
   if (!initAbly()) {
     document.getElementById('lbSubtitle').textContent = ru ? '🔴 Нет интернета' : '🔴 No internet';
     renderLeaderboard(); return;
@@ -169,10 +232,165 @@ export function openFriendsPanel() {
   document.getElementById('friendsPanel').style.display = 'block';
 }
 
+// ─── Firebase race ─────────────────────────────────────────────────────────────
+
+/** Запускает Firebase-гонку: слушает позицию соперника, шлёт свою */
+export function startRaceFirebase(roomId) {
+  if (!window.firebaseDB) return false;
+  const raceRef = window.firebaseDB.ref('races/' + roomId + '/pos');
+
+  // Слушаем позицию соперника
+  raceRef.on('child_changed', function (snap) {
+    if (snap.key === S.playerId) return;
+    const d = snap.val();
+    if (!d) return;
+    S.opponentPos.x    = d.x    || 0;
+    S.opponentPos.y    = d.y    || 0;
+    S.opponentPos.vx   = d.vx   || 0;
+    S.opponentPos.dist = d.dist || 0;
+    S.opponentPos.nitro = d.nitro || 0;
+    if (d.dist >= 500 && S.raceState === 'racing' && !S.raceWinner) {
+      S.raceWinner = 'them'; S.raceState = 'finished';
+      setTimeout(function () { S.state = 'raceover'; }, 600);
+    }
+  });
+
+  // Callback для синхронизации своей позиции (вызывается из main.js)
+  S._syncRacePos = function () {
+    if (!window.firebaseDB || S.raceState !== 'racing') return;
+    raceRef.child(S.playerId).set({
+      x:    Math.round(S.player.x),
+      y:    Math.round(S.player.y),
+      vx:   Math.round(S.player.vx * 10) / 10,
+      dist: S.distM,
+      nitro: S.nitro,
+      t:    Date.now(),
+    });
+  };
+
+  // Очистка при окончании гонки
+  window.addEventListener('deepdiver:raceEnd', function onRaceEnd() {
+    window.removeEventListener('deepdiver:raceEnd', onRaceEnd);
+    raceRef.off();
+    window.firebaseDB.ref('races/' + roomId).remove().catch(function () {});
+  }, { once: true });
+
+  return true;
+}
+
+// ─── Firebase lobby ────────────────────────────────────────────────────────────
+
+let fbLobbyRef = null;
+let fbMyLobbyRef = null;
+
+/** Ищет соперника через Firebase RTDB /lobby */
+export function lookForOpponentFirebase() {
+  if (!window.firebaseDB) return false;
+
+  S.raceState = 'looking';
+  document.getElementById('raceLookingPanel').style.display = 'block';
+  updateRaceTexts();
+
+  const myName = S.playerName || ('Diver#' + S.playerId.slice(-4));
+  fbLobbyRef   = window.firebaseDB.ref('lobby');
+  fbMyLobbyRef = fbLobbyRef.child(S.playerId);
+
+  // Входим в лобби
+  fbMyLobbyRef.set({ n: myName, status: 'waiting', t: Date.now() });
+  fbMyLobbyRef.onDisconnect().remove();
+
+  // Личный канал для входящих вызовов
+  const myInboxRef = window.firebaseDB.ref('inbox/' + S.playerId);
+  myInboxRef.remove(); // очищаем старые сообщения
+
+  function cleanup() {
+    if (fbMyLobbyRef) { fbMyLobbyRef.remove(); fbMyLobbyRef = null; }
+    if (fbLobbyRef)   { fbLobbyRef.off(); fbLobbyRef = null; }
+    myInboxRef.off();
+  }
+
+  // Слушаем входящие вызовы
+  myInboxRef.on('child_added', function (snap) {
+    const msg = snap.val();
+    if (!msg || !msg.type) return;
+
+    if (msg.type === 'challenge' && (S.raceState === 'looking' || S.raceState === 'waiting_response')) {
+      // Нас вызвали
+      S.raceState = 'challenged';
+      fbMyLobbyRef.update({ status: 'busy' });
+      document.getElementById('raceLookingPanel').style.display = 'none';
+      const panel = document.getElementById('raceChallengePanel');
+      document.getElementById('rcSub').textContent = (S.lang==='ru'?'от ':'from ') + msg.name;
+      panel.style.display = 'block';
+      updateRaceTexts();
+
+      document.getElementById('rcAccept').onclick = function () {
+        const seed = Date.now();
+        S.raceRoom = { opponentId: msg.from, opponentName: msg.name, seed };
+        // Отвечаем через inbox соперника
+        window.firebaseDB.ref('inbox/' + msg.from).push({ type: 'response', ok: true, seed });
+        panel.style.display = 'none';
+        cleanup();
+        startCountdown();
+      };
+      document.getElementById('rcReject').onclick = function () {
+        window.firebaseDB.ref('inbox/' + msg.from).push({ type: 'response', ok: false });
+        panel.style.display = 'none';
+        S.raceState = 'looking';
+        fbMyLobbyRef.update({ status: 'waiting' });
+      };
+    }
+
+    if (msg.type === 'response' && S.raceState === 'waiting_response') {
+      myInboxRef.off();
+      if (msg.ok) {
+        S.raceRoom.seed = msg.seed;
+        document.getElementById('raceLookingPanel').style.display = 'none';
+        cleanup();
+        startCountdown();
+      } else {
+        S.raceRoom = null; S.raceState = 'looking';
+        fbMyLobbyRef.update({ status: 'waiting' });
+      }
+    }
+  });
+
+  function tryChallenge(uid, data) {
+    if (S.raceState !== 'looking') return;
+    if (!data || uid === S.playerId || data.status !== 'waiting') return;
+    // Детерминированно: меньший uid инициирует
+    if (S.playerId < uid) {
+      S.raceState = 'waiting_response';
+      S.raceRoom  = { opponentId: uid, opponentName: data.n || uid, seed: null };
+      fbMyLobbyRef.update({ status: 'busy' });
+      window.firebaseDB.ref('inbox/' + uid).push({ type: 'challenge', from: S.playerId, name: myName });
+    }
+  }
+
+  // Смотрим в лобби
+  fbLobbyRef.on('child_added', function (snap) { tryChallenge(snap.key, snap.val()); });
+  fbLobbyRef.on('child_changed', function (snap) { tryChallenge(snap.key, snap.val()); });
+
+  // Проверяем текущих участников лобби
+  fbLobbyRef.once('value', function (snap) {
+    const all = snap.val() || {};
+    Object.entries(all).forEach(function (e) { tryChallenge(e[0], e[1]); });
+  });
+
+  // Сохраняем cleanup для cancelLooking
+  S._fbLobbyCleanup = cleanup;
+  return true;
+}
+
 // ─── Race matchmaking ─────────────────────────────────────────────────────────
 let lobbyPresence = null;
 
 export function lookForOpponent() {
+  // Приоритет: Firebase, fallback: Ably
+  if (window.firebaseDB) {
+    lookForOpponentFirebase();
+    return;
+  }
   if (!initAbly()) {
     alert(S.lang==='ru' ? 'Нет подключения. Проверь интернет.' : 'No connection. Check internet.');
     return;
@@ -247,6 +465,9 @@ export function lookForOpponent() {
 
 export function cancelLooking() {
   S.raceState = 'idle';
+  // Firebase lobby cleanup
+  if (S._fbLobbyCleanup) { S._fbLobbyCleanup(); S._fbLobbyCleanup = null; }
+  // Ably lobby cleanup
   if (lobbyPresence) { lobbyPresence.presence.leave(); lobbyPresence.presence.unsubscribe(); lobbyPresence = null; }
   if (S.ablyMe) S.ablyMe.unsubscribe();
   document.getElementById('raceLookingPanel').style.display = 'none';

@@ -149,6 +149,7 @@ export const S = {
 
   // Callbacks set by main.js to avoid circular deps
   _syncRacePos: null,
+  _fbLobbyCleanup: null,
 
   // UI button hit-boxes (set by render/draw functions)
   ui: {},
