@@ -15,7 +15,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://artemisf-create.github.io/deep-diver">
   <link rel="canonical" href="https://artemisf-create.github.io/deep-diver">
-  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+  <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
@@ -570,63 +570,19 @@ if (!playerId) {
   localStorage.setItem('deepdiver_pid', playerId);
 }
 
-// Gun — децентрализованная P2P база, работает через публичные relay-серверы
-const gun = Gun(['https://relay.peer.ooo/gun',
-                 'https://gun.eco/gun']);
-const playersDB = gun.get('deepdiver-v1-players');
-
-// Публикуем свой рекорд в сеть
-function syncMyScore() {
-  const name = playerName || ('Diver#' + playerId.slice(-4));
-  playersDB.get(playerId).put({ n: name, s: hiScore, t: Date.now() });
-}
-
 let friends = JSON.parse(localStorage.getItem('deepdiver_friends') || '[]');
-// friends = [{id, n, s}]
-const gunSubs = {}; // активные подписки Gun по friendId
-
 function saveFriends() { localStorage.setItem('deepdiver_friends', JSON.stringify(friends)); }
 
-// Подписываемся на обновления конкретного друга через Gun
-function subscribeFriend(friendId) {
-  if (gunSubs[friendId]) return; // уже подписаны
-  gunSubs[friendId] = playersDB.get(friendId).on(function(data) {
-    if (!data || !data.n) return;
-    const idx = friends.findIndex(function(f){ return f.id === friendId; });
-    if (idx < 0) return;
-    const changed = friends[idx].n !== data.n || friends[idx].s !== data.s;
-    friends[idx].n = data.n;
-    friends[idx].s = data.s || 0;
-    if (changed) { saveFriends(); renderFriendsList(); }
-  });
+function syncMyScore() {
+  if (!ablyScores) return;
+  try {
+    ablyScores.publish('score', {
+      id: playerId,
+      n: playerName || ('Diver#' + playerId.slice(-4)),
+      s: hiScore
+    });
+  } catch(e) {}
 }
-
-// Подписываемся на всех друзей при старте
-function subscribeAllFriends() {
-  friends.forEach(function(f){ subscribeFriend(f.id); });
-}
-subscribeAllFriends();
-
-// Отправляем свой ID в "входящие" к другу
-function sendFriendRequest(toId) {
-  playersDB.get(toId).get('reqs').get(playerId).put({ from: playerId, t: Date.now() });
-}
-
-// Слушаем входящие запросы — если кто-то добавил нас, добавляем его в ответ
-function listenIncomingRequests() {
-  playersDB.get(playerId).get('reqs').map().on(function(data) {
-    if (!data || !data.from) return;
-    const fid = data.from;
-    if (fid === playerId) return;
-    if (friends.find(function(f){ return f.id === fid; })) return; // уже есть
-    // Автоматически добавляем
-    friends.push({ id: fid, n: '…', s: 0 });
-    saveFriends();
-    subscribeFriend(fid);
-    renderFriendsList();
-  });
-}
-listenIncomingRequests();
 
 // ─── Help Panel ──────────────────────────────────────────────────────────────
 const helpPanel = document.getElementById('helpPanel');
@@ -662,73 +618,159 @@ const lbList    = document.getElementById('lbList');
 const lbLoading = document.getElementById('lbLoading');
 const lbClose   = document.getElementById('lbClose');
 
-let allPlayers = {}; // { [id]: {n, s} }
+// Кэш всех игроков полученных через Ably
+// Загружаем кеш всех игроков из прошлых сессий
+let allPlayers = JSON.parse(localStorage.getItem('deepdiver_players') || '{}');
+function saveAllPlayers() {
+  // Сохраняем только не-me записи (me обновляется динамически)
+  const toSave = {};
+  Object.entries(allPlayers).forEach(function(e) {
+    if (!e[1].me) toSave[e[0]] = { n: e[1].n, s: e[1].s };
+  });
+  localStorage.setItem('deepdiver_players', JSON.stringify(toSave));
+}
 
-// Подписываемся на всех игроков в базе — Gun стримит обновления
-playersDB.map().on(function(data, id) {
-  if (!data || !data.n || !data.s) return;
-  if (id === '_') return; // служебный ключ Gun
-  allPlayers[id] = { n: data.n, s: data.s };
+// Предзаполняем своими данными и друзьями
+function seedAllPlayers() {
+  allPlayers[playerId] = { n: playerName || ('Diver#' + playerId.slice(-4)), s: hiScore, me: true };
+  friends.forEach(function(f){
+    if (!allPlayers[f.id] || allPlayers[f.id].s < f.s)
+      allPlayers[f.id] = { n: f.n, s: f.s||0, friend: true };
+  });
+}
+
+function onScoreReceived(data) {
+  if (!data || !data.id || !data.n) return;
+  const isMe     = data.id === playerId;
+  const isFriend = friends.some(function(f){ return f.id === data.id; });
+  allPlayers[data.id] = { n: data.n, s: data.s||0, me: isMe, friend: isFriend, t: Date.now() };
+  saveAllPlayers();
+  if (isFriend) {
+    const fi = friends.findIndex(function(f){ return f.id === data.id; });
+    if (fi >= 0 && data.s >= (friends[fi].s||0)) {
+      friends[fi].n = data.n; friends[fi].s = data.s||0;
+      saveFriends(); renderFriendsList();
+    }
+  }
   if (lbPanel.style.display !== 'none') renderLeaderboard();
-});
+}
 
 function renderLeaderboard() {
   const ru = lang === 'ru';
-  const friendIds = new Set(friends.map(function(f){ return f.id; }));
+  seedAllPlayers();
+  const now = Date.now();
+  let onlineCount = 0;
+  Object.values(allPlayers).forEach(function(p) {
+    if (p.me || (p.t && now - p.t < 15000)) onlineCount++;
+  });
   const rows = Object.entries(allPlayers)
-    .map(function(e){ return { id: e[0], n: e[1].n, s: e[1].s }; })
+    .map(function(e){ return { id: e[0], n: e[1].n, s: e[1].s, me: e[1].me, friend: e[1].friend }; })
     .sort(function(a,b){ return b.s - a.s; })
     .slice(0, 100);
-
   if (!rows.length) {
-    lbList.innerHTML = '<div id="lbLoading">' + (ru ? 'Загрузка…' : 'Loading…') + '</div>';
+    lbList.innerHTML = '<div id="lbLoading">' + (ru ? 'Нет данных' : 'No data yet') + '</div>';
     return;
   }
-
-  const myRank = rows.findIndex(function(r){ return r.id === playerId; });
-
+  const myRank = rows.findIndex(function(r){ return r.me; });
   lbList.innerHTML = rows.map(function(r, i) {
-    const isMe     = r.id === playerId;
-    const isFriend = friendIds.has(r.id);
-    const medal    = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '.';
-    const tag      = isMe ? (ru ? ' 👤вы' : ' 👤you') : isFriend ? ' 🤝' : '';
-    const cls      = isMe ? 'lr me' : isFriend ? 'lr friend' : 'lr';
-    return '<div class="' + cls + '">' +
-      '<span class="lrank">' + medal + '</span>' +
-      '<span class="lname">🤿 ' + r.n + '<span class="ltag">' + tag + '</span></span>' +
-      '<span class="lscore">◆ ' + r.s + '</span>' +
-    '</div>';
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+    const tag   = r.me?(ru?' 👤вы':' 👤you'):r.friend?' 🤝':'';
+    const cls   = r.me?'lr me':r.friend?'lr friend':'lr';
+    return '<div class="'+cls+'"><span class="lrank">'+medal+'</span>' +
+      '<span class="lname">🤿 '+r.n+'<span class="ltag">'+tag+'</span></span>' +
+      '<span class="lscore">◆ '+r.s+'</span></div>';
   }).join('');
-
-  lbSub.textContent = ru
-    ? (rows.length + ' игроков' + (myRank >= 0 ? ' · ваше место: #' + (myRank+1) : ''))
-    : (rows.length + ' players' + (myRank >= 0 ? ' · your rank: #' + (myRank+1) : ''));
+  const connected = ably && ably.connection && ably.connection.state === 'connected';
+  const connStatus = connected
+    ? (ru ? '🟢 '+onlineCount+' онлайн' : '🟢 '+onlineCount+' online')
+    : (ru ? '🔴 нет связи' : '🔴 offline');
+  lbSub.textContent = (ru
+    ? (rows.length+' в чарте'+(myRank>=0?' · место #'+(myRank+1):''))
+    : (rows.length+' in chart'+(myRank>=0?' · rank #'+(myRank+1):'')))
+    + ' · ' + connStatus;
 }
 
 function openLeaderboard() {
   const ru = lang === 'ru';
   lbTitle.textContent = ru ? '🏆 Таблица лидеров' : '🏆 Leaderboard';
   lbClose.textContent = ru ? 'Закрыть' : 'Close';
-  renderLeaderboard();
   lbPanel.style.display = 'flex';
+
+  if (!initAbly()) {
+    lbSub.textContent = ru ? '🔴 Нет интернета' : '🔴 No internet';
+    renderLeaderboard(); return;
+  }
+
+  // Рассылаем свой рекорд сразу — пусть другие устройства тоже сделают это скорее
+  syncMyScore();
+  renderLeaderboard();
+  // Обновляем каждую секунду пока открыто (онлайн-счётчик меняется по t)
+  var lbIv = setInterval(function() {
+    if (lbPanel.style.display === 'none') { clearInterval(lbIv); return; }
+    renderLeaderboard();
+  }, 1000);
 }
 
-lbClose.addEventListener('click', function(){ lbPanel.style.display = 'none'; });
+lbClose.addEventListener('click', function(){
+  lbPanel.style.display = 'none';
+});
 
-// ─── RACE / MULTIPLAYER ───────────────────────────────────────────────────────
-const lobbyDB = gun.get('deepdiver-v1-lobby');
-const raceDB  = gun.get('deepdiver-v1-race');
+// subscribeFriend — ничего особого: broadcastScore каждые 5с сам доставит рекорд.
+// Но отправим 'hello' на личный канал друга чтобы он немедленно ответил.
+function subscribeFriend(fid) {
+  if (!initAbly()) return;
+  try { ably.channels.get('deepdiver:player:' + fid).publish('hello', { id: playerId }); } catch(e) {}
+}
 
-let raceState    = 'idle';  // idle | looking | challenged | countdown | racing | finished
-let raceRoom     = null;    // { seed, opponentId, opponentName }
-let raceWinner   = null;    // 'me' | 'them'
-let nitro        = 0;       // charges 0-3
-let nitroActive  = 0;       // frames of boost remaining
+// ─── RACE / MULTIPLAYER via Ably ─────────────────────────────────────────────
+const ABLY_KEY = 'fPA0OQ.fOAFuQ:vSdoLoATEzApqdWcrHXLRJZac06YjTYqWy7rcT5nrlY';
+let ably = null;
+let ablyLobby  = null;
+let ablyMe     = null;
+let ablyScores = null;
+
+function initAbly() {
+  if (ably) return true;
+  try {
+    ably = new Ably.Realtime({ key: ABLY_KEY, clientId: playerId });
+    ablyLobby  = ably.channels.get('deepdiver:lobby');
+    ablyMe     = ably.channels.get('deepdiver:player:' + playerId);
+    ablyScores = ably.channels.get('deepdiver:scores');
+    // Единая подписка на все сообщения канала
+    ablyScores.subscribe(function(msg) {
+      if (msg.data && msg.data.id && msg.data.id !== playerId) {
+        onScoreReceived(msg.data);
+      }
+    });
+    // Рассылаем свой рекорд каждые 5 секунд — все видят друг друга
+    function broadcastScore() {
+      var myN = playerName || ('Diver#' + playerId.slice(-4));
+      ablyScores.publish('score', { id: playerId, n: myN, s: hiScore, t: Date.now() });
+    }
+    broadcastScore();
+    setInterval(broadcastScore, 5000);
+    // Когда кто-то шлёт 'hello' на наш личный канал — немедленно отвечаем рекордом
+    ablyMe.subscribe('hello', function() { broadcastScore(); });
+    return true;
+  } catch(e) {
+    console.error('Ably init failed:', e);
+    return false;
+  }
+}
+
+// Инициализируем Ably при старте (для чарта и друзей)
+setTimeout(function() { initAbly(); }, 1000);
+
+let raceState    = 'idle';
+let raceRoom     = null;
+let raceWinner   = null;
+let nitro        = 0;
+let nitroActive  = 0;
 let opponentPos  = { x:200, y:200, vx:0, dist:0, nitro:0 };
 let raceSyncTimer = 0;
-let lobbyListener = null;
+let ablyRaceChannel = null;
 
-// Seeded RNG — чтобы у обоих была одинаковая пещера
+// Seeded RNG — одинаковая пещера у обоих
 function makeSeededRng(seed) {
   let s = seed >>> 0;
   return function() {
@@ -736,199 +778,189 @@ function makeSeededRng(seed) {
     return s / 4294967296;
   };
 }
-let raceRng = null;
-
-// Подменяем Math.random на seeded во время генерации пещеры
 function withSeededRng(seed, fn) {
-  raceRng = makeSeededRng(seed);
   const orig = Math.random;
-  Math.random = raceRng;
+  Math.random = makeSeededRng(seed);
   fn();
   Math.random = orig;
 }
 
-// --- Lobby ---
-function publishLobby(status) {
-  lobbyDB.get(playerId).put({ n: playerName || '???', t: Date.now(), st: status });
-}
+// --- Matchmaking ---
+let lobbyPresence = null; // Ably presence channel for lobby
 
 function lookForOpponent() {
+  if (!initAbly()) {
+    alert(lang==='ru' ? 'Нет подключения. Проверь интернет.' : 'No connection. Check internet.');
+    return;
+  }
   raceState = 'looking';
-  publishLobby('waiting');
   document.getElementById('raceLookingPanel').style.display = 'block';
   updateRaceTexts();
-  // Слушаем лобби — ищем другого ожидающего игрока
-  if (lobbyListener) lobbyListener.off();
-  lobbyListener = lobbyDB.map().on(function(data, uid) {
+
+  const myName = playerName || ('Diver#' + playerId.slice(-4));
+  lobbyPresence = ably.channels.get('deepdiver:lobby-v2');
+
+  // 1. Слушаем входящие вызовы на личном канале
+  ablyMe.subscribe('challenge', function(msg) {
+    if (raceState !== 'looking' && raceState !== 'waiting_response') return;
+    const d = msg.data;
+    if (!d || !d.from) return;
+    raceState = 'challenged';
+    lobbyPresence.presence.update({ status: 'busy' });
+    document.getElementById('raceLookingPanel').style.display = 'none';
+    const panel = document.getElementById('raceChallengePanel');
+    document.getElementById('rcSub').textContent = (lang==='ru'?'от ':'from ') + d.name;
+    panel.style.display = 'block';
+    updateRaceTexts();
+    document.getElementById('rcAccept').onclick = function() {
+      const seed = Date.now();
+      raceRoom = { opponentId: d.from, opponentName: d.name, seed: seed };
+      ably.channels.get('deepdiver:player:' + d.from).publish('response', { ok: true, seed: seed });
+      panel.style.display = 'none';
+      lobbyPresence.presence.leave();
+      startCountdown();
+    };
+    document.getElementById('rcReject').onclick = function() {
+      ably.channels.get('deepdiver:player:' + d.from).publish('response', { ok: false });
+      panel.style.display = 'none';
+      raceState = 'looking';
+      lobbyPresence.presence.update({ status: 'waiting', name: myName });
+    };
+  });
+
+  // 2. Слушаем появление новых игроков в лобби через Presence
+  lobbyPresence.presence.subscribe('enter', function(member) {
+    tryChallenge(member.clientId, member.data);
+  });
+  lobbyPresence.presence.subscribe('update', function(member) {
+    tryChallenge(member.clientId, member.data);
+  });
+
+  function tryChallenge(uid, data) {
     if (raceState !== 'looking') return;
-    if (!data || !data.n || uid === playerId) return;
-    if (data.st !== 'waiting') return;
-    if (Date.now() - data.t > 20000) return; // игнорируем старые записи
-    // Вызов посылает только тот у кого ID меньше — избегаем дедлок
-    if (playerId < uid) sendChallenge(uid, data.n);
+    if (!data || uid === playerId || data.status !== 'waiting') return;
+    // Детерминированно: меньший ID посылает вызов
+    if (playerId < uid) {
+      raceState = 'waiting_response';
+      raceRoom = { opponentId: uid, opponentName: data.name || uid, seed: null };
+      ably.channels.get('deepdiver:player:' + uid).publish('challenge', {
+        from: playerId, name: myName
+      });
+      // Ждём ответ
+      ablyMe.subscribe('response', function(msg2) {
+        ablyMe.unsubscribe('response');
+        if (!msg2.data) return;
+        if (msg2.data.ok) {
+          raceRoom.seed = msg2.data.seed;
+          document.getElementById('raceLookingPanel').style.display = 'none';
+          lobbyPresence.presence.leave();
+          startCountdown();
+        } else {
+          raceRoom = null; raceState = 'looking';
+          lobbyPresence.presence.update({ status: 'waiting', name: myName });
+        }
+      });
+    }
+  }
+
+  // 3. Заходим в лобби и сразу проверяем кто уже там
+  lobbyPresence.presence.enter({ status: 'waiting', name: myName }, function() {
+    lobbyPresence.presence.get(function(err, members) {
+      if (err || !members) return;
+      members.forEach(function(m) { tryChallenge(m.clientId, m.data); });
+    });
   });
 }
 
 function cancelLooking() {
   raceState = 'idle';
-  publishLobby('offline');
-  if (lobbyListener) { lobbyListener.off(); lobbyListener = null; }
+  if (lobbyPresence) { lobbyPresence.presence.leave(); lobbyPresence.presence.unsubscribe(); lobbyPresence = null; }
+  ablyMe.unsubscribe();
   document.getElementById('raceLookingPanel').style.display = 'none';
 }
-
-// --- Challenge ---
-function sendChallenge(toId, toName) {
-  raceState = 'waiting_response';
-  raceRoom = { opponentId: toId, opponentName: toName, seed: null };
-  raceDB.get(toId).get('ch').get(playerId).put({
-    from: playerId, n: playerName || '???', t: Date.now()
-  });
-  // Слушаем ответ
-  raceDB.get(playerId).get('resp').get(toId).on(function(data) {
-    if (!data || raceState !== 'waiting_response') return;
-    if (data.ok) {
-      raceRoom.seed = data.seed;
-      document.getElementById('raceLookingPanel').style.display = 'none';
-      publishLobby('offline');
-      startCountdown();
-    } else {
-      raceRoom = null; raceState = 'looking';
-      publishLobby('waiting');
-    }
-  });
-}
-
-// Слушаем входящие вызовы
-function listenRaceChallenges() {
-  raceDB.get(playerId).get('ch').map().on(function(data) {
-    if (!data || !data.from || !data.n) return;
-    if (raceState !== 'looking') return;
-    if (Date.now() - data.t > 20000) return;
-    raceState = 'challenged';
-    publishLobby('busy');
-    document.getElementById('raceLookingPanel').style.display = 'none';
-    const panel = document.getElementById('raceChallengePanel');
-    panel.style.display = 'block';
-    document.getElementById('rcSub').textContent = (lang === 'ru' ? 'от ' : 'from ') + data.n;
-    updateRaceTexts();
-    // Кнопки
-    document.getElementById('rcAccept').onclick = function() {
-      const seed = Date.now();
-      raceRoom = { opponentId: data.from, opponentName: data.n, seed };
-      raceDB.get(data.from).get('resp').get(playerId).put({ ok: true, seed, t: Date.now() });
-      panel.style.display = 'none';
-      publishLobby('offline');
-      startCountdown();
-    };
-    document.getElementById('rcReject').onclick = function() {
-      raceDB.get(data.from).get('resp').get(playerId).put({ ok: false, t: Date.now() });
-      panel.style.display = 'none';
-      raceState = 'idle';
-      publishLobby('offline');
-    };
-  });
-}
-listenRaceChallenges();
 
 // --- Countdown ---
 function startCountdown() {
   raceState = 'countdown';
   const panel = document.getElementById('raceCountdownPanel');
   const numEl = document.getElementById('raceCountNum');
-  const subEl = document.getElementById('rcdSub');
-  subEl.textContent = (lang === 'ru' ? 'vs ' : 'vs ') + raceRoom.opponentName;
+  document.getElementById('rcdSub').textContent = 'vs ' + raceRoom.opponentName;
   panel.style.display = 'block';
-  let n = 3;
-  numEl.textContent = n;
+  let n = 3; numEl.textContent = n;
   const iv = setInterval(function() {
     n--;
     if (n > 0) { numEl.textContent = n; }
     else {
-      numEl.textContent = lang === 'ru' ? 'GO!' : 'GO!';
+      numEl.textContent = 'GO!';
       clearInterval(iv);
-      setTimeout(function() {
-        panel.style.display = 'none';
-        startRace();
-      }, 700);
+      setTimeout(function() { panel.style.display = 'none'; startRace(); }, 700);
     }
   }, 1000);
 }
 
 // --- Start race ---
 function startRace() {
-  gameMode = 'race';
-  raceState = 'racing';
-  raceWinner = null;
+  gameMode = 'race'; raceState = 'racing'; raceWinner = null;
   nitro = 0; nitroActive = 0;
-  opponentPos = { x: 200, y: 200, vx: 0, dist: 0, nitro: 0 };
-  // Генерируем пещеру с общим seed
+  opponentPos = { x:200, y:200, vx:0, dist:0, nitro:0 };
   withSeededRng(raceRoom.seed, function() {
     initGrid();
-    genCol = 0; pathY = Math.floor(ROWS / 2); pathH = 3; branchCol = -1;
+    genCol = 0; pathY = Math.floor(ROWS/2); pathH = 3; branchCol = -1;
     generateUntil(POOL);
   });
   camSpeed = isMobile ? 0.6 : 1.2;
-  const spawnCol = 2;
-  let spawnRow = Math.floor(ROWS / 2);
+  const spawnCol = 2; let spawnRow = Math.floor(ROWS/2);
   for (let delta = 0; delta < ROWS; delta++) {
-    const r1 = Math.floor(ROWS/2) + delta, r2 = Math.floor(ROWS/2) - delta;
-    if (r1 < ROWS && grid[spawnCol % POOL][r1] === AIR) { spawnRow = r1; break; }
-    if (r2 >= 0  && grid[spawnCol % POOL][r2] === AIR) { spawnRow = r2; break; }
+    const r1 = Math.floor(ROWS/2)+delta, r2 = Math.floor(ROWS/2)-delta;
+    if (r1 < ROWS && grid[spawnCol%POOL][r1]===AIR) { spawnRow=r1; break; }
+    if (r2 >= 0  && grid[spawnCol%POOL][r2]===AIR) { spawnRow=r2; break; }
   }
-  player.x = spawnCol * T + T/2;
-  player.y = spawnRow * T + T/2;
+  player.x = spawnCol*T+T/2; player.y = spawnRow*T+T/2;
   updateVP();
-  camXpx = Math.max(0, player.x - VP.w/2);
-  camYpx = Math.max(0, player.y - VP.h/2);
-  player.vx = 0; player.vy = 0; player.dead = false; player.invincible = 0;
-  score = 0; distM = 0; oxygen = 100; oxyTick = 0;
-  lives = 3; lastCheckpointCamX = 0; lastCheckpointX = player.x;
-  lastCheckpointY = player.y; lastCheckpointDist = 0; nextCheckpointM = 60;
-  frame = 0; swimPhase = 0; particles = []; paused = false;
-  state = 'play';
-  // Слушаем позицию соперника
-  listenOpponentPos();
-}
-
-// --- Sync position ---
-function syncRacePos() {
-  if (!raceRoom || raceState !== 'racing') return;
-  raceDB.get('pos').get(raceRoom.opponentId + '_' + playerId).put({
-    x: Math.round(player.x), y: Math.round(player.y),
-    vx: Math.round(player.vx * 10) / 10,
-    dist: distM, nitro: nitro, t: Date.now()
-  });
-}
-
-function listenOpponentPos() {
-  raceDB.get('pos').get(playerId + '_' + raceRoom.opponentId).on(function(data) {
-    if (!data) return;
-    opponentPos.x    = data.x    || 0;
-    opponentPos.y    = data.y    || 0;
-    opponentPos.vx   = data.vx   || 0;
-    opponentPos.dist = data.dist || 0;
-    opponentPos.nitro= data.nitro|| 0;
-    // Соперник финишировал?
-    if (data.dist >= 500 && raceState === 'racing' && !raceWinner) {
-      raceWinner = 'them';
-      raceState = 'finished';
+  camXpx = Math.max(0, player.x-VP.w/2);
+  camYpx = Math.max(0, player.y-VP.h/2);
+  player.vx=0; player.vy=0; player.dead=false; player.invincible=0;
+  score=0; distM=0; oxygen=100; oxyTick=0; lives=3;
+  lastCheckpointCamX=0; lastCheckpointX=player.x; lastCheckpointY=player.y;
+  lastCheckpointDist=0; nextCheckpointM=60;
+  frame=0; swimPhase=0; particles=[]; paused=false;
+  state='play';
+  // Подписываемся на позицию соперника
+  const roomId = [playerId, raceRoom.opponentId].sort().join('_');
+  ablyRaceChannel = ably.channels.get('deepdiver:race:' + roomId);
+  ablyRaceChannel.subscribe('pos', function(msg) {
+    const d = msg.data;
+    if (!d || d.id === playerId) return;
+    opponentPos.x = d.x || 0; opponentPos.y = d.y || 0;
+    opponentPos.vx = d.vx || 0; opponentPos.dist = d.dist || 0;
+    opponentPos.nitro = d.nitro || 0;
+    if (d.dist >= 500 && raceState === 'racing' && !raceWinner) {
+      raceWinner = 'them'; raceState = 'finished';
       setTimeout(function(){ state = 'raceover'; }, 600);
     }
   });
 }
 
-// --- Nitro activation ---
-function activateNitro() {
-  if (nitro <= 0 || nitroActive > 0) return;
-  nitro--;
-  nitroActive = 90; // 1.5 сек буст
+// --- Sync position ---
+function syncRacePos() {
+  if (!ablyRaceChannel || raceState !== 'racing') return;
+  ablyRaceChannel.publish('pos', {
+    id: playerId,
+    x: Math.round(player.x), y: Math.round(player.y),
+    vx: Math.round(player.vx*10)/10,
+    dist: distM, nitro: nitro
+  });
 }
 
+// --- Nitro ---
+function activateNitro() {
+  if (nitro <= 0 || nitroActive > 0) return;
+  nitro--; nitroActive = 90;
+}
 document.addEventListener('keydown', function(e) {
   if (e.code === 'Space' && state === 'play' && gameMode === 'race') activateNitro();
 });
 
-// --- Race textsupdate ---
 function updateRaceTexts() {
   const ru = lang === 'ru';
   document.getElementById('rlTitle').textContent  = ru ? 'Ищем соперника…' : 'Looking for opponent…';
@@ -1032,7 +1064,7 @@ addFriendBtn.addEventListener('click', function() {
   saveFriends();
   subscribeFriend(fid); // сразу подписываемся — данные придут автоматически
   // Уведомляем друга — пишем свой ID в его "входящие запросы"
-  sendFriendRequest(fid);
+  // sendFriendRequest removed (Gun.js removed)
   friendCodeIn.value = '';
   fpMsg.textContent = lang === 'ru' ? '✅ Добавлен! Загружаем данные…' : '✅ Added! Loading data…';
   renderFriendsList();
