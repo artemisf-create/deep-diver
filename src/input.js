@@ -61,6 +61,8 @@ function checkMenuButtons(tx, ty) {
   return false;
 }
 
+// ─── initInput — call after S.canvas is set ───────────────────────────────────
+export function initInput() {
 // ─── Keyboard ─────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   S.keys[e.key] = true;
@@ -208,3 +210,4 @@ document.addEventListener('gesturechange', e => e.preventDefault(), { passive: f
 document.addEventListener('gestureend',    e => e.preventDefault(), { passive: false });
 document.addEventListener('contextmenu',   e => e.preventDefault());
 document.addEventListener('touchmove',     e => e.preventDefault(), { passive: false });
+} // end initInput

@@ -8,7 +8,7 @@ import {
   drawParticles, drawHUD, drawRaceHUD, drawPause, drawDead, drawWin, drawLevelUp,
   drawRaceOver, drawMenu, drawMobileControls, openHelp,
 } from './render.js';
-import './input.js'; // registers all event listeners
+import { initInput } from './input.js';
 
 // ─── Canvas init ──────────────────────────────────────────────────────────────
 S.canvas = document.getElementById('game');
@@ -37,6 +37,9 @@ loadProgress();
 
 // ─── Wire syncRacePos callback ────────────────────────────────────────────────
 S._syncRacePos = syncRacePos;
+
+// ─── Init input (must be after S.canvas is set) ───────────────────────────────
+initInput();
 
 // ─── startGame ────────────────────────────────────────────────────────────────
 export function startGame() {
