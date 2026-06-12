@@ -1,0 +1,74 @@
+{
+  "rules": {
+    // /scores/{uid} — каждый читает всё, пишет только в свой узел
+    "scores": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth !== null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['n','s','t'])
+                   && newData.child('n').isString()
+                   && newData.child('n').val().length <= 32
+                   && newData.child('s').isNumber()
+                   && newData.child('s').val() >= 0
+                   && newData.child('s').val() <= 9999999
+                   && newData.child('t').isNumber()"
+      }
+    },
+
+    // /presence/{uid} — онлайн-статус: читают все, пишет только владелец
+    "presence": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth !== null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['online','t'])
+                   && newData.child('online').isBoolean()
+                   && newData.child('t').isNumber()"
+      }
+    },
+
+    // /lobby/{uid} — поиск матча: читают все авторизованные, пишет только владелец
+    "lobby": {
+      ".read": "auth !== null",
+      "$uid": {
+        ".write": "auth !== null && auth.uid === $uid",
+        ".validate": "newData === null || (
+                      newData.hasChildren(['n','status','t'])
+                   && newData.child('n').isString()
+                   && newData.child('status').isString()
+                   && newData.child('t').isNumber())"
+      }
+    },
+
+    // /inbox/{uid} — входящие вызовы: любой авторизованный может добавить сообщение,
+    //                читать / удалять может только владелец
+    "inbox": {
+      "$uid": {
+        ".read":  "auth !== null && auth.uid === $uid",
+        ".write": "auth !== null",
+        "$msgId": {
+          ".validate": "newData === null || (
+                        newData.hasChildren(['type'])
+                     && newData.child('type').isString())"
+        }
+      }
+    },
+
+    // /races/{roomId} — данные гонки: только участники могут читать/писать
+    "races": {
+      "$roomId": {
+        ".read":  "auth !== null",
+        ".write": "auth !== null",
+        "pos": {
+          "$uid": {
+            ".write": "auth !== null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['x','y','dist','t'])
+                       && newData.child('x').isNumber()
+                       && newData.child('y').isNumber()
+                       && newData.child('dist').isNumber()
+                       && newData.child('t').isNumber()"
+          }
+        }
+      }
+    }
+  }
+}
