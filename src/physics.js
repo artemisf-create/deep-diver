@@ -238,7 +238,7 @@ export function update() {
     } else {
       const nitroBoost = (S.gameMode === 'race' && S.nitroActive > 0) ? 3.5 : 0;
       if (S.nitroActive > 0) S.nitroActive--;
-      S.camSpeed = Math.min(S.isMobile ? 2.0 : 4.0, S.camSpeed + 0.0004) + nitroBoost;
+      S.camSpeed = Math.min(S.gameMode === 'race' ? 2.0 : (S.isMobile ? 2.0 : 4.0), S.camSpeed + 0.0004) + nitroBoost;
       S.camXpx  += S.camSpeed;
       S.distM    = Math.floor(S.camXpx / 40);
     }
