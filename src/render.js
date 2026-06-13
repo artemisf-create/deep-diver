@@ -325,34 +325,34 @@ export function drawOpponent() {
   S.ctx.scale(S.isMobile ? 0.9 : 1.5, S.isMobile ? 0.9 : 1.5);
   S.ctx.globalAlpha = 0.85;
 
-  // ласты — красно-коричневые
-  S.ctx.fillStyle = '#993300';
+  // ласты
+  S.ctx.fillStyle = '#cc6600';
   S.ctx.beginPath(); S.ctx.ellipse(-16, 4+bob, 8, 4, -0.4, 0, Math.PI*2); S.ctx.fill();
   S.ctx.beginPath(); S.ctx.ellipse(-14, -3+bob, 8, 4, 0.4, 0, Math.PI*2); S.ctx.fill();
 
-  // тело — тёмно-красное
-  S.ctx.fillStyle = '#5c1010';
+  // тело
+  S.ctx.fillStyle = '#0d3d5c';
   S.ctx.beginPath(); S.ctx.roundRect(-8, -8+bob*.3, 18, 16, 4); S.ctx.fill();
 
   // плавники
-  S.ctx.fillStyle = '#5c1010';
+  S.ctx.fillStyle = '#0d3d5c';
   S.ctx.beginPath(); S.ctx.ellipse(1, -8+Math.sin(S.worldFrame*0.09)*2, 6, 3, 0.15, 0, Math.PI*2); S.ctx.fill();
   S.ctx.beginPath(); S.ctx.ellipse(1,  8-Math.sin(S.worldFrame*0.09)*2, 6, 3, -0.15, 0, Math.PI*2); S.ctx.fill();
 
-  // баллон — серый
-  S.ctx.fillStyle = '#777'; S.ctx.beginPath(); S.ctx.roundRect(-6, -5+bob*.3, 6, 12, 2); S.ctx.fill();
+  // баллон
+  S.ctx.fillStyle = '#888'; S.ctx.beginPath(); S.ctx.roundRect(-6, -5+bob*.3, 6, 12, 2); S.ctx.fill();
   S.ctx.fillStyle = '#aaa'; S.ctx.beginPath(); S.ctx.roundRect(-5.5, -3+bob*.3, 4, 5, 1); S.ctx.fill();
 
-  // маска — красная
-  S.ctx.fillStyle = '#aa2200'; S.ctx.beginPath(); S.ctx.arc(10, 0+bob*.3, 9, 0, Math.PI*2); S.ctx.fill();
-  S.ctx.fillStyle = '#5c1010'; S.ctx.beginPath(); S.ctx.ellipse(10, 0+bob*.3, 7, 9, Math.PI/2, -0.3, Math.PI+0.3); S.ctx.fill();
-  S.ctx.fillStyle = 'rgba(255,160,120,.45)'; S.ctx.beginPath(); S.ctx.ellipse(11, 0+bob*.3, 5, 6.5, Math.PI/2, -0.3, Math.PI+0.3); S.ctx.fill();
+  // маска
+  S.ctx.fillStyle = '#b07830'; S.ctx.beginPath(); S.ctx.arc(10, 0+bob*.3, 9, 0, Math.PI*2); S.ctx.fill();
+  S.ctx.fillStyle = '#0d3d5c'; S.ctx.beginPath(); S.ctx.ellipse(10, 0+bob*.3, 7, 9, Math.PI/2, -0.3, Math.PI+0.3); S.ctx.fill();
+  S.ctx.fillStyle = 'rgba(160,220,255,.5)'; S.ctx.beginPath(); S.ctx.ellipse(11, 0+bob*.3, 5, 6.5, Math.PI/2, -0.3, Math.PI+0.3); S.ctx.fill();
 
   // глаза
   S.ctx.fillStyle = '#fff';
   S.ctx.beginPath(); S.ctx.arc(10, -3+bob*.3, 2, 0, Math.PI*2); S.ctx.fill();
   S.ctx.beginPath(); S.ctx.arc(10,  3+bob*.3, 2, 0, Math.PI*2); S.ctx.fill();
-  S.ctx.fillStyle = '#400';
+  S.ctx.fillStyle = '#224';
   S.ctx.beginPath(); S.ctx.arc(10, -3+bob*.3, 1, 0, Math.PI*2); S.ctx.fill();
   S.ctx.beginPath(); S.ctx.arc(10,  3+bob*.3, 1, 0, Math.PI*2); S.ctx.fill();
 
