@@ -37,6 +37,10 @@ export function initGrid() {
 
 export function generateUntil(targetCol) {
   const rng = S.raceRng || Math.random.bind(Math);
+  // В гонке используем фиксированное кол-во строк — одинаково на всех устройствах
+  const genRows  = S.gameMode === 'race' ? S.RACE_ROWS : S.ROWS;
+  const rowOffset = S.gameMode === 'race' ? Math.floor((S.ROWS - genRows) / 2) : 0;
+
   while (S.genCol < targetCol) {
     const ci  = S.genCol % S.POOL;
     const col = S.grid[ci];
@@ -47,29 +51,31 @@ export function generateUntil(targetCol) {
     if (rng() < 0.18) S.pathY += 1;
     if (rng() < 0.10) S.pathY -= 1;
     if (rng() < 0.08) S.pathH = S.pathH === 2 ? 3 : (S.pathH === 3 ? (rng() < 0.5 ? 2 : 4) : 3);
-    S.pathY = Math.max(S.pathH + 1, Math.min(S.ROWS - S.pathH - 2, S.pathY));
+    S.pathY = Math.max(S.pathH + 1, Math.min(genRows - S.pathH - 2, S.pathY));
 
     for (let r = S.pathY - S.pathH; r <= S.pathY + S.pathH; r++) {
-      if (r >= 0 && r < S.ROWS) col[r] = S.AIR;
+      const ar = r + rowOffset;
+      if (ar >= 0 && ar < S.ROWS) col[ar] = S.AIR;
     }
 
     if (S.branchCol < 0 && rng() < 0.035 && S.genCol > 40) {
       S.branchCol = S.genCol;
-      S.branchY   = S.pathY > S.ROWS / 2
+      S.branchY   = S.pathY > genRows / 2
         ? Math.floor(rng() * (S.pathY - S.pathH - 3) + 1)
         : S.pathY + S.pathH + 2 + Math.floor(rng() * 3);
-      S.branchY = Math.max(2, Math.min(S.ROWS - 3, S.branchY));
+      S.branchY = Math.max(2, Math.min(genRows - 3, S.branchY));
     }
     if (S.branchCol >= 0) {
       if (rng() < 0.12) S.branchY += rng() < 0.5 ? -1 : 1;
-      S.branchY = Math.max(2, Math.min(S.ROWS - 3, S.branchY));
+      S.branchY = Math.max(2, Math.min(genRows - 3, S.branchY));
       for (let r = S.branchY - 2; r <= S.branchY + 2; r++) {
-        if (r >= 0 && r < S.ROWS) col[r] = S.AIR;
+        const ar = r + rowOffset;
+        if (ar >= 0 && ar < S.ROWS) col[ar] = S.AIR;
       }
       if (S.genCol - S.branchCol > 15 + rng() * 25) {
         const lo = Math.min(S.pathY - S.pathH, S.branchY - 2);
         const hi = Math.max(S.pathY + S.pathH, S.branchY + 2);
-        for (let r = lo; r <= hi; r++) if (r >= 0 && r < S.ROWS) col[r] = S.AIR;
+        for (let r = lo; r <= hi; r++) { const ar = r + rowOffset; if (ar >= 0 && ar < S.ROWS) col[ar] = S.AIR; }
         S.branchCol = -1;
       }
     }

@@ -149,6 +149,8 @@ export const S = {
 
   // Seeded RNG для гонки — используется вместо Math.random при генерации пещеры
   raceRng: null,
+  // Фиксированное кол-во строк для генерации пещеры в гонке (одинаково на всех устройствах)
+  RACE_ROWS: 10,
 
   // Callbacks set by main.js to avoid circular deps
   _syncRacePos: null,

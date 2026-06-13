@@ -91,9 +91,13 @@ function startRace(raceRoom) {
   S.genCol = 0; S.pathY = Math.floor(S.ROWS/2); S.pathH = 3; S.branchCol = -1;
   generateUntil(S.POOL);
   S.camSpeed = S.isMobile ? 0.6 : 1.2;
-  const spawnCol = 2; let spawnRow = Math.floor(S.ROWS/2);
+  const spawnCol = 2;
+  // В гонке ищем спавн в центральной зоне (rowOffset..rowOffset+RACE_ROWS)
+  const rowOffset = Math.floor((S.ROWS - S.RACE_ROWS) / 2);
+  const searchMid = Math.floor(S.ROWS / 2);
+  let spawnRow = searchMid;
   for (let delta = 0; delta < S.ROWS; delta++) {
-    const r1 = Math.floor(S.ROWS/2)+delta, r2 = Math.floor(S.ROWS/2)-delta;
+    const r1 = searchMid + delta, r2 = searchMid - delta;
     if (r1 < S.ROWS && S.grid[spawnCol%S.POOL][r1]===S.AIR) { spawnRow=r1; break; }
     if (r2 >= 0  && S.grid[spawnCol%S.POOL][r2]===S.AIR) { spawnRow=r2; break; }
   }
