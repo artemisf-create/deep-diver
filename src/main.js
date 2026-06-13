@@ -126,7 +126,9 @@ function startRace(raceRoom) {
     S.ablyRaceChannel.subscribe('pos', function (msg) {
       const d = msg.data;
       if (!d || d.id === S.playerId) return;
-      S.opponentPos.x = d.x || 0; S.opponentPos.y = d.y || 0;
+      const rowOffset = Math.floor((S.ROWS - S.RACE_ROWS) / 2);
+      S.opponentPos.x = d.col * S.T;
+      S.opponentPos.y = (d.row + rowOffset) * S.T;
       S.opponentPos.vx = d.vx || 0; S.opponentPos.dist = d.dist || 0;
       S.opponentPos.nitro = d.nitro || 0;
       if (d.dist >= 500 && S.raceState === 'racing' && !S.raceWinner) {

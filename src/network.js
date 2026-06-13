@@ -302,8 +302,10 @@ export function startRaceFirebase(roomId) {
     if (snap.key === S.playerId) return;
     const d = snap.val();
     if (!d) return;
-    S.opponentPos.x     = d.x    || 0;
-    S.opponentPos.y     = d.y    || 0;
+    // Переводим нормализованные col/row в пиксели этого устройства
+    const rowOffset = Math.floor((S.ROWS - S.RACE_ROWS) / 2);
+    S.opponentPos.x     = d.col * S.T;
+    S.opponentPos.y     = (d.row + rowOffset) * S.T;
     S.opponentPos.vx    = d.vx   || 0;
     S.opponentPos.dist  = d.dist || 0;
     S.opponentPos.nitro = d.nitro || 0;
@@ -317,9 +319,10 @@ export function startRaceFirebase(roomId) {
 
   S._syncRacePos = function () {
     if (!window.firebaseDB || S.raceState !== 'racing') return;
+    const rowOffset = Math.floor((S.ROWS - S.RACE_ROWS) / 2);
     raceRef.child(S.playerId).set({
-      x:    Math.round(S.player.x),
-      y:    Math.round(S.player.y),
+      col:  Math.round(S.player.x / S.T * 10) / 10,
+      row:  Math.round((S.player.y / S.T - rowOffset) * 10) / 10,
       vx:   Math.round(S.player.vx * 10) / 10,
       dist: S.distM,
       nitro: S.nitro,
@@ -573,10 +576,12 @@ export function startCountdown() {
 // ─── Race position sync ───────────────────────────────────────────────────────
 export function syncRacePos() {
   if (!S.ablyRaceChannel || S.raceState !== 'racing') return;
+  const rowOffset = Math.floor((S.ROWS - S.RACE_ROWS) / 2);
   S.ablyRaceChannel.publish('pos', {
-    id: S.playerId,
-    x: Math.round(S.player.x), y: Math.round(S.player.y),
-    vx: Math.round(S.player.vx * 10) / 10,
+    id:   S.playerId,
+    col:  Math.round(S.player.x / S.T * 10) / 10,
+    row:  Math.round((S.player.y / S.T - rowOffset) * 10) / 10,
+    vx:   Math.round(S.player.vx * 10) / 10,
     dist: S.distM, nitro: S.nitro,
   });
 }
