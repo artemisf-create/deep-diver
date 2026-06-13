@@ -14,7 +14,8 @@ export function drawBackground() {
 
 // ─── Tiles ────────────────────────────────────────────────────────────────────
 function rockColor(c, r) {
-  const base = Math.max(8, 52 - S.distM * 0.08);
+  const dist = S.gameMode === 'race' ? Math.floor(S.camXpx / 40) : S.distM;
+  const base = Math.max(8, 52 - dist * 0.08);
   return `rgb(${base + (c*3+r*7)%9},${base-4+(r*5+c)%7},${base+8+(c*11+r)%13})`;
 }
 
