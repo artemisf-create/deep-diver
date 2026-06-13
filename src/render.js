@@ -135,15 +135,42 @@ export function drawEntities() {
       }
 
       if (d.type === 'finish' && !d.collected) {
-        S.ctx.save(); S.ctx.translate(sx, baseY);
+        // вертикальная финишная черта через весь экран
+        S.ctx.save();
+        S.ctx.strokeStyle = 'rgba(255,220,50,1)';
+        S.ctx.lineWidth = 4;
+        S.ctx.setLineDash([8, 6]);
+        S.ctx.beginPath(); S.ctx.moveTo(sx, 0); S.ctx.lineTo(sx, S.VP.h); S.ctx.stroke();
+        S.ctx.setLineDash([]);
+        // шашечный флаг
         const pulse = 0.7 + 0.3 * Math.sin(S.worldFrame * 0.1);
-        S.ctx.shadowColor = '#ffe680'; S.ctx.shadowBlur = 30 * pulse;
-        const fg = S.ctx.createRadialGradient(-4,-4,2,0,0,22);
-        fg.addColorStop(0,'rgba(255,255,180,0.95)'); fg.addColorStop(1,'rgba(200,150,0,0.4)');
-        S.ctx.fillStyle = fg; S.ctx.beginPath(); S.ctx.arc(0,0,22,0,Math.PI*2); S.ctx.fill();
-        S.ctx.fillStyle = '#fff'; S.ctx.font = 'bold 14px sans-serif'; S.ctx.textAlign = 'center';
-        S.ctx.fillText('🏁', 0, 6);
+        S.ctx.shadowColor = '#ffe680'; S.ctx.shadowBlur = 20 * pulse;
+        const fy = S.VP.h / 2 - 50;
+        const sqSize = 10;
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 4; col++) {
+            S.ctx.fillStyle = (row + col) % 2 === 0 ? '#fff' : '#222';
+            S.ctx.fillRect(sx + col * sqSize, fy + row * sqSize, sqSize, sqSize);
+          }
+        }
+        S.ctx.fillStyle = 'rgba(255,220,50,0.9)';
+        S.ctx.font = 'bold 13px sans-serif'; S.ctx.textAlign = 'center';
+        S.ctx.fillText('🏁 FINISH', sx + 20, fy + 50);
         S.ctx.shadowBlur = 0;
+        S.ctx.restore();
+      }
+
+      if (d.type === 'race_cp') {
+        // промежуточный чекпоинт гонки
+        S.ctx.save();
+        S.ctx.strokeStyle = 'rgba(100,200,255,0.6)';
+        S.ctx.lineWidth = 2;
+        S.ctx.setLineDash([5, 8]);
+        S.ctx.beginPath(); S.ctx.moveTo(sx, 0); S.ctx.lineTo(sx, S.VP.h); S.ctx.stroke();
+        S.ctx.setLineDash([]);
+        S.ctx.fillStyle = 'rgba(100,200,255,0.85)';
+        S.ctx.font = 'bold 11px sans-serif'; S.ctx.textAlign = 'center';
+        S.ctx.fillText(d.m + 'm', sx, S.VP.h / 2 - 20);
         S.ctx.restore();
       }
 

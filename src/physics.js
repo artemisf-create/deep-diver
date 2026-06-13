@@ -86,14 +86,26 @@ export function generateUntil(targetCol) {
     const pick = () => airRows[Math.floor(Math.random() * airRows.length)];
 
     if (S.gameMode === 'race') {
+      // нитро каждые ~10 колонок
       if (S.genCol > 5 && S.genCol % 10 === 0 && Math.random() < 0.75) {
         const r = pick();
         if (!dec[r]) dec[r] = { type: 'nitro', phase: Math.random() * Math.PI * 2, collected: false };
       }
+      // пузыри O₂ каждые ~14 колонок как в кампании
+      if (S.genCol > 10 && S.genCol % 14 === 0 && Math.random() < 0.65) {
+        const r = pick();
+        if (!dec[r]) dec[r] = { type: 'bubble', phase: Math.random() * Math.PI * 2, collected: false };
+      }
+      // промежуточные метки каждые 100м
+      const mPerCol = S.T / 40;
+      const distCol = S.genCol * mPerCol;
+      if (distCol > 0 && distCol < 500 && Math.round(distCol) % 100 === 0 && Math.abs(distCol - Math.round(distCol)) < mPerCol / 2) {
+        dec[0] = { type: 'race_cp', m: Math.round(distCol) };
+      }
+      // финишная черта на 500м
       const finishCol = Math.round(500 * 40 / S.T);
       if (S.genCol === finishCol) {
-        const r = pick();
-        if (!dec[r]) dec[r] = { type: 'finish', phase: 0, collected: false };
+        dec[0] = { type: 'finish', phase: 0, collected: false };
       }
     } else {
       if (S.genCol > 5 && S.genCol % 6 === 0 && Math.random() < 0.7) {
