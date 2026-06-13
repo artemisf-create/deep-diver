@@ -360,10 +360,24 @@ export function lookForOpponentFirebase() {
   fbLobbyRef   = window.firebaseDB.ref('lobby');
   fbMyLobbyRef = fbLobbyRef.child(S.playerId);
 
+  // ── Таймаут 30 сек ──
+  const matchTimeout = setTimeout(() => {
+    if (S.raceState === 'looking' || S.raceState === 'waiting_response') {
+      console.warn('[FB Lobby] Таймаут — соперник не найден за 30 сек');
+      cleanup();
+      cancelLooking();
+      alert(S.lang === 'ru'
+        ? 'Не удалось найти соперника. Попробуйте позже.'
+        : 'Could not find an opponent. Try again later.');
+    }
+  }, 30000);
+
   fbMyLobbyRef.set({ n: myName, status: 'waiting', t: Date.now() })
     .then(() => console.log('[FB Lobby] Вошли в лобби как', S.playerId))
     .catch(e => {
       console.error('[FB Lobby] set() FAILED — Security Rules блокируют запись в /lobby:', e.code, e.message);
+      clearTimeout(matchTimeout);
+      cancelLooking();
       showNetBanner('⚠ Нет прав доступа к лобби. Проверь Rules', '⚠ Lobby access denied. Check Rules');
     });
   fbMyLobbyRef.onDisconnect().remove();
@@ -372,6 +386,7 @@ export function lookForOpponentFirebase() {
   myInboxRef.remove();
 
   function cleanup() {
+    clearTimeout(matchTimeout);
     if (fbMyLobbyRef) { fbMyLobbyRef.remove(); fbMyLobbyRef = null; }
     if (fbLobbyRef)   { fbLobbyRef.off(); fbLobbyRef = null; }
     myInboxRef.off();
