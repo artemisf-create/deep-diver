@@ -318,20 +318,51 @@ export function drawOpponent() {
   const sx = S.opponentPos.x - S.camXpx;
   const sy = S.opponentPos.y - S.camYpx;
   if (sx < -60 || sx > S.W + 60) return;
-  S.ctx.save(); S.ctx.translate(sx, sy); S.ctx.scale(1.5, 1.5);
-  S.ctx.globalAlpha = 0.75;
-  S.ctx.fillStyle = '#5c0d0d';
-  S.ctx.beginPath(); S.ctx.roundRect(-8, -8, 18, 16, 4); S.ctx.fill();
-  S.ctx.fillStyle = '#cc2200'; S.ctx.beginPath(); S.ctx.arc(10, 0, 9, 0, Math.PI*2); S.ctx.fill();
-  S.ctx.fillStyle = 'rgba(255,100,80,.5)'; S.ctx.beginPath(); S.ctx.ellipse(11,0,5,6.5,Math.PI/2,-0.3,Math.PI+0.3); S.ctx.fill();
-  S.ctx.fillStyle = '#cc6600';
-  S.ctx.beginPath(); S.ctx.ellipse(-16,4,8,4,-0.4,0,Math.PI*2); S.ctx.fill();
-  S.ctx.beginPath(); S.ctx.ellipse(-14,-3,8,4,0.4,0,Math.PI*2); S.ctx.fill();
+
+  const bob = Math.sin(S.worldFrame * 0.12) * 2;
+
+  S.ctx.save(); S.ctx.translate(sx, sy);
+  S.ctx.scale(S.isMobile ? 0.9 : 1.5, S.isMobile ? 0.9 : 1.5);
+  S.ctx.globalAlpha = 0.85;
+
+  // ласты — красно-коричневые
+  S.ctx.fillStyle = '#993300';
+  S.ctx.beginPath(); S.ctx.ellipse(-16, 4+bob, 8, 4, -0.4, 0, Math.PI*2); S.ctx.fill();
+  S.ctx.beginPath(); S.ctx.ellipse(-14, -3+bob, 8, 4, 0.4, 0, Math.PI*2); S.ctx.fill();
+
+  // тело — тёмно-красное
+  S.ctx.fillStyle = '#5c1010';
+  S.ctx.beginPath(); S.ctx.roundRect(-8, -8+bob*.3, 18, 16, 4); S.ctx.fill();
+
+  // плавники
+  S.ctx.fillStyle = '#5c1010';
+  S.ctx.beginPath(); S.ctx.ellipse(1, -8+Math.sin(S.worldFrame*0.09)*2, 6, 3, 0.15, 0, Math.PI*2); S.ctx.fill();
+  S.ctx.beginPath(); S.ctx.ellipse(1,  8-Math.sin(S.worldFrame*0.09)*2, 6, 3, -0.15, 0, Math.PI*2); S.ctx.fill();
+
+  // баллон — серый
+  S.ctx.fillStyle = '#777'; S.ctx.beginPath(); S.ctx.roundRect(-6, -5+bob*.3, 6, 12, 2); S.ctx.fill();
+  S.ctx.fillStyle = '#aaa'; S.ctx.beginPath(); S.ctx.roundRect(-5.5, -3+bob*.3, 4, 5, 1); S.ctx.fill();
+
+  // маска — красная
+  S.ctx.fillStyle = '#aa2200'; S.ctx.beginPath(); S.ctx.arc(10, 0+bob*.3, 9, 0, Math.PI*2); S.ctx.fill();
+  S.ctx.fillStyle = '#5c1010'; S.ctx.beginPath(); S.ctx.ellipse(10, 0+bob*.3, 7, 9, Math.PI/2, -0.3, Math.PI+0.3); S.ctx.fill();
+  S.ctx.fillStyle = 'rgba(255,160,120,.45)'; S.ctx.beginPath(); S.ctx.ellipse(11, 0+bob*.3, 5, 6.5, Math.PI/2, -0.3, Math.PI+0.3); S.ctx.fill();
+
+  // глаза
+  S.ctx.fillStyle = '#fff';
+  S.ctx.beginPath(); S.ctx.arc(10, -3+bob*.3, 2, 0, Math.PI*2); S.ctx.fill();
+  S.ctx.beginPath(); S.ctx.arc(10,  3+bob*.3, 2, 0, Math.PI*2); S.ctx.fill();
+  S.ctx.fillStyle = '#400';
+  S.ctx.beginPath(); S.ctx.arc(10, -3+bob*.3, 1, 0, Math.PI*2); S.ctx.fill();
+  S.ctx.beginPath(); S.ctx.arc(10,  3+bob*.3, 1, 0, Math.PI*2); S.ctx.fill();
+
   S.ctx.globalAlpha = 1;
   S.ctx.restore();
+
+  // имя над дайвером
   S.ctx.save();
   S.ctx.fillStyle = '#ffaaaa'; S.ctx.font = 'bold 12px sans-serif'; S.ctx.textAlign = 'center';
-  S.ctx.fillText(S.raceRoom ? S.raceRoom.opponentName : '???', sx, sy - 28);
+  S.ctx.fillText('🤿 ' + (S.raceRoom ? S.raceRoom.opponentName : '???'), sx, sy - 28);
   S.ctx.restore();
 }
 
