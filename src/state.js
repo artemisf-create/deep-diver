@@ -147,6 +147,9 @@ export const S = {
   raceSyncTimer: 0,
   opponentPos: { x: 200, y: 200, vx: 0, dist: 0, nitro: 0 },
 
+  // Seeded RNG для гонки — используется вместо Math.random при генерации пещеры
+  raceRng: null,
+
   // Callbacks set by main.js to avoid circular deps
   _syncRacePos: null,
   _fbLobbyCleanup: null,

@@ -2,7 +2,7 @@
 import { S } from './state.js';
 import { loadProgress, saveProgress, fbSaveScore, fbSetPresence, fsUpdateLeaderboard } from './db.js';
 import { initAbly, initFirebaseAuth, syncMyScore, syncRacePos, startRaceFirebase, activateNitro, openLeaderboard, openFriendsPanel, renderFriendsList } from './network.js';
-import { initGrid, generateUntil, withSeededRng, updateVP, update } from './physics.js';
+import { initGrid, generateUntil, withSeededRng, makeSeededRng, updateVP, update } from './physics.js';
 import {
   drawBackground, drawTiles, drawCheckpoints, drawEntities, drawPlayer, drawOpponent,
   drawParticles, drawHUD, drawRaceHUD, drawPause, drawDead, drawWin, drawLevelUp,
@@ -83,12 +83,13 @@ function startRace(raceRoom) {
   S.raceRoom  = raceRoom;
   S.gameMode  = 'race'; S.raceState = 'racing'; S.raceWinner = null;
   S.nitro = 0; S.nitroActive = 0;
-  S.opponentPos = { x:200, y:200, vx:0, dist:0, nitro:0 };
-  withSeededRng(raceRoom.seed, function () {
-    initGrid();
-    S.genCol = 0; S.pathY = Math.floor(S.ROWS/2); S.pathH = 3; S.branchCol = -1;
-    generateUntil(S.POOL);
-  });
+
+  // Сидированный RNG для всей гонки — одинаков у обоих игроков
+  S.raceRng = makeSeededRng(raceRoom.seed);
+
+  initGrid();
+  S.genCol = 0; S.pathY = Math.floor(S.ROWS/2); S.pathH = 3; S.branchCol = -1;
+  generateUntil(S.POOL);
   S.camSpeed = S.isMobile ? 0.6 : 1.2;
   const spawnCol = 2; let spawnRow = Math.floor(S.ROWS/2);
   for (let delta = 0; delta < S.ROWS; delta++) {
@@ -97,6 +98,8 @@ function startRace(raceRoom) {
     if (r2 >= 0  && S.grid[spawnCol%S.POOL][r2]===S.AIR) { spawnRow=r2; break; }
   }
   S.player.x = spawnCol*S.T+S.T/2; S.player.y = spawnRow*S.T+S.T/2;
+  // Противник стартует рядом но чуть ниже — пока не придут реальные координаты
+  S.opponentPos = { x: S.player.x, y: S.player.y + S.T * 2, vx: 0, dist: 0, nitro: 0 };
   updateVP();
   S.camXpx = Math.max(0, S.player.x-S.VP.w/2);
   S.camYpx = Math.max(0, S.player.y-S.VP.h/2);

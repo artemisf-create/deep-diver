@@ -36,6 +36,7 @@ export function initGrid() {
 }
 
 export function generateUntil(targetCol) {
+  const rng = S.raceRng || Math.random.bind(Math);
   while (S.genCol < targetCol) {
     const ci  = S.genCol % S.POOL;
     const col = S.grid[ci];
@@ -43,29 +44,29 @@ export function generateUntil(targetCol) {
     col.fill(S.WALL);
     for (let r = 0; r < S.ROWS; r++) dec[r] = null;
 
-    if (Math.random() < 0.18) S.pathY += 1;
-    if (Math.random() < 0.10) S.pathY -= 1;
-    if (Math.random() < 0.08) S.pathH = S.pathH === 2 ? 3 : (S.pathH === 3 ? (Math.random() < 0.5 ? 2 : 4) : 3);
+    if (rng() < 0.18) S.pathY += 1;
+    if (rng() < 0.10) S.pathY -= 1;
+    if (rng() < 0.08) S.pathH = S.pathH === 2 ? 3 : (S.pathH === 3 ? (rng() < 0.5 ? 2 : 4) : 3);
     S.pathY = Math.max(S.pathH + 1, Math.min(S.ROWS - S.pathH - 2, S.pathY));
 
     for (let r = S.pathY - S.pathH; r <= S.pathY + S.pathH; r++) {
       if (r >= 0 && r < S.ROWS) col[r] = S.AIR;
     }
 
-    if (S.branchCol < 0 && Math.random() < 0.035 && S.genCol > 40) {
+    if (S.branchCol < 0 && rng() < 0.035 && S.genCol > 40) {
       S.branchCol = S.genCol;
       S.branchY   = S.pathY > S.ROWS / 2
-        ? Math.floor(Math.random() * (S.pathY - S.pathH - 3) + 1)
-        : S.pathY + S.pathH + 2 + Math.floor(Math.random() * 3);
+        ? Math.floor(rng() * (S.pathY - S.pathH - 3) + 1)
+        : S.pathY + S.pathH + 2 + Math.floor(rng() * 3);
       S.branchY = Math.max(2, Math.min(S.ROWS - 3, S.branchY));
     }
     if (S.branchCol >= 0) {
-      if (Math.random() < 0.12) S.branchY += Math.random() < 0.5 ? -1 : 1;
+      if (rng() < 0.12) S.branchY += rng() < 0.5 ? -1 : 1;
       S.branchY = Math.max(2, Math.min(S.ROWS - 3, S.branchY));
       for (let r = S.branchY - 2; r <= S.branchY + 2; r++) {
         if (r >= 0 && r < S.ROWS) col[r] = S.AIR;
       }
-      if (S.genCol - S.branchCol > 15 + Math.random() * 25) {
+      if (S.genCol - S.branchCol > 15 + rng() * 25) {
         const lo = Math.min(S.pathY - S.pathH, S.branchY - 2);
         const hi = Math.max(S.pathY + S.pathH, S.branchY + 2);
         for (let r = lo; r <= hi; r++) if (r >= 0 && r < S.ROWS) col[r] = S.AIR;
@@ -74,8 +75,8 @@ export function generateUntil(targetCol) {
     }
 
     for (let r = 0; r < S.ROWS; r++) {
-      if (col[r] === S.WALL && Math.random() < 0.07)
-        dec[r] = { type: 'decor', kind: Math.floor(Math.random() * 3), phase: Math.random() * Math.PI * 2 };
+      if (col[r] === S.WALL && rng() < 0.07)
+        dec[r] = { type: 'decor', kind: Math.floor(rng() * 3), phase: rng() * Math.PI * 2 };
     }
 
     const diff = difficulty(S.genCol);
@@ -83,18 +84,18 @@ export function generateUntil(targetCol) {
     for (let r = 0; r < S.ROWS; r++) if (col[r] === S.AIR) airRows.push(r);
     if (!airRows.length) { S.genCol++; continue; }
 
-    const pick = () => airRows[Math.floor(Math.random() * airRows.length)];
+    const pick = () => airRows[Math.floor(rng() * airRows.length)];
 
     if (S.gameMode === 'race') {
       // нитро каждые ~10 колонок
-      if (S.genCol > 5 && S.genCol % 10 === 0 && Math.random() < 0.75) {
+      if (S.genCol > 5 && S.genCol % 10 === 0 && rng() < 0.75) {
         const r = pick();
-        if (!dec[r]) dec[r] = { type: 'nitro', phase: Math.random() * Math.PI * 2, collected: false };
+        if (!dec[r]) dec[r] = { type: 'nitro', phase: rng() * Math.PI * 2, collected: false };
       }
       // пузыри O₂ каждые ~14 колонок как в кампании
-      if (S.genCol > 10 && S.genCol % 14 === 0 && Math.random() < 0.65) {
+      if (S.genCol > 10 && S.genCol % 14 === 0 && rng() < 0.65) {
         const r = pick();
-        if (!dec[r]) dec[r] = { type: 'bubble', phase: Math.random() * Math.PI * 2, collected: false };
+        if (!dec[r]) dec[r] = { type: 'bubble', phase: rng() * Math.PI * 2, collected: false };
       }
       // промежуточные метки каждые 100м
       const mPerCol = S.T / 40;
@@ -108,27 +109,27 @@ export function generateUntil(targetCol) {
         dec[0] = { type: 'finish', phase: 0, collected: false };
       }
     } else {
-      if (S.genCol > 5 && S.genCol % 6 === 0 && Math.random() < 0.7) {
+      if (S.genCol > 5 && S.genCol % 6 === 0 && rng() < 0.7) {
         const r = pick();
-        if (!dec[r]) dec[r] = { type: 'pearl', phase: Math.random() * Math.PI * 2, collected: false };
+        if (!dec[r]) dec[r] = { type: 'pearl', phase: rng() * Math.PI * 2, collected: false };
       }
-      if (S.genCol > 10 && S.genCol % 14 === 0 && Math.random() < 0.65) {
+      if (S.genCol > 10 && S.genCol % 14 === 0 && rng() < 0.65) {
         const r = pick();
-        if (!dec[r]) dec[r] = { type: 'bubble', phase: Math.random() * Math.PI * 2, collected: false };
+        if (!dec[r]) dec[r] = { type: 'bubble', phase: rng() * Math.PI * 2, collected: false };
       }
       const sharkInterval = Math.round(30 - diff * 18);
-      if (S.genCol > 50 && S.genCol % sharkInterval === 0 && Math.random() < 0.6 + diff * 0.3) {
+      if (S.genCol > 50 && S.genCol % sharkInterval === 0 && rng() < 0.6 + diff * 0.3) {
         const r = pick();
-        if (!dec[r]) dec[r] = { type: 'shark', vy: (Math.random() < 0.5 ? 1 : -1) * (0.5 + diff * 1.2), py: r * S.T + S.T / 2, px: S.genCol * S.T + S.T / 2, vx: 0, aggroed: false };
+        if (!dec[r]) dec[r] = { type: 'shark', vy: (rng() < 0.5 ? 1 : -1) * (0.5 + diff * 1.2), py: r * S.T + S.T / 2, px: S.genCol * S.T + S.T / 2, vx: 0, aggroed: false };
       }
       const jellyInterval = Math.round(28 - diff * 15);
-      if (S.genCol > 70 && S.genCol % jellyInterval === 0 && Math.random() < 0.55 + diff * 0.35) {
+      if (S.genCol > 70 && S.genCol % jellyInterval === 0 && rng() < 0.55 + diff * 0.35) {
         const r = pick();
-        if (!dec[r]) dec[r] = { type: 'jelly', phase: Math.random() * Math.PI * 2, py: r * S.T + S.T / 2, px: S.genCol * S.T + S.T / 2, vx: 0, vy: 0, aggroed: false };
+        if (!dec[r]) dec[r] = { type: 'jelly', phase: rng() * Math.PI * 2, py: r * S.T + S.T / 2, px: S.genCol * S.T + S.T / 2, vx: 0, vy: 0, aggroed: false };
       }
-      if (diff > 0.4 && S.genCol % 40 === 0 && Math.random() < diff * 0.6) {
+      if (diff > 0.4 && S.genCol % 40 === 0 && rng() < diff * 0.6) {
         const r = pick();
-        if (!dec[r]) dec[r] = { type: 'mine', phase: Math.random() * Math.PI * 2 };
+        if (!dec[r]) dec[r] = { type: 'mine', phase: rng() * Math.PI * 2 };
       }
     }
 
