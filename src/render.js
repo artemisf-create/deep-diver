@@ -463,7 +463,7 @@ export function drawRaceHUD() {
   const col = diffM > 0 ? '#44ffaa' : diffM < 0 ? '#ff6666' : '#ffee44';
   S.ctx.fillStyle = col; S.ctx.font = 'bold 13px sans-serif'; S.ctx.textAlign = 'center';
   S.ctx.fillText('🏁 ' + label2, S.VP.w/2, S.VP.h - 44);
-  if (S.nitro > 0 && !S.isMobile) {
+  if (S.nitro > 0 && !S.isMobile && S.gameMode === 'race') {
     S.ctx.fillStyle = 'rgba(255,255,255,.5)'; S.ctx.font = '11px sans-serif';
     S.ctx.fillText(ru ? '[ПРОБЕЛ] — нитро' : '[SPACE] — nitro', S.VP.w/2, S.VP.h - 58);
   }
@@ -882,7 +882,28 @@ export function drawMobileControls() {
   S.ctx.beginPath(); S.ctx.roundRect(pb.x, pb.y, pb.w, pb.h, 10); S.ctx.fill(); S.ctx.stroke();
   S.ctx.fillStyle = '#fff'; S.ctx.font = '22px sans-serif'; S.ctx.textAlign = 'center';
   S.ctx.fillText(S.paused ? '▶' : '⏸', pb.x + pb.w/2, pb.y + pb.h/2 + 8);
+
+  // Кнопка нитро — только в гонке на мобиле
+  if (S.gameMode === 'race') {
+    const nb = nitroBtn();
+    const hasNitro = S.nitro > 0;
+    const active = S.nitroActive > 0;
+    S.ctx.fillStyle = active ? 'rgba(255,200,0,.6)' : hasNitro ? 'rgba(255,120,0,.4)' : 'rgba(255,255,255,.1)';
+    S.ctx.strokeStyle = active ? '#ffdd00' : hasNitro ? '#ff8800' : 'rgba(255,255,255,.3)';
+    S.ctx.lineWidth = 2;
+    S.ctx.beginPath(); S.ctx.roundRect(nb.x, nb.y, nb.w, nb.h, 12); S.ctx.fill(); S.ctx.stroke();
+    S.ctx.fillStyle = hasNitro ? '#fff' : 'rgba(255,255,255,.4)';
+    S.ctx.font = 'bold 18px sans-serif'; S.ctx.textAlign = 'center';
+    S.ctx.fillText('N²', nb.x + nb.w/2, nb.y + nb.h/2 + 6);
+    S.ctx.font = '10px sans-serif';
+    S.ctx.fillText(S.nitro + ' шт', nb.x + nb.w/2, nb.y + nb.h - 6);
+  }
+
   S.ctx.restore();
+}
+
+export function nitroBtn() {
+  return { x: 8, y: S.VP.h - 110, w: 58, h: 58 };
 }
 
 // ─── Help Panel ───────────────────────────────────────────────────────────────

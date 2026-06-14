@@ -1,6 +1,6 @@
 // input.js — keyboard, mouse, touch handlers
 import { S } from './state.js';
-import { dpadButtons, pauseBtn } from './render.js';
+import { dpadButtons, pauseBtn, nitroBtn } from './render.js';
 
 function getTouchCoords(touch) {
   const r = S.canvas.getBoundingClientRect();
@@ -69,16 +69,17 @@ document.addEventListener('keydown', e => {
   if ((e.key === 'p' || e.key === 'P' || e.key === 'Escape') && S.state === 'play') S.paused = !S.paused;
   if (e.key === 'Enter' && S.state === 'dead') { S.state = 'menu'; }
   if (e.key === ' ' || e.code === 'Space') {
-    if (S.state === 'play') S.paused = !S.paused;
-    else if (S.state === 'dead') window.dispatchEvent(new CustomEvent('deepdiver:startGame'));
+    if (S.state === 'play' && S.gameMode === 'race') {
+      // В гонке Space = нитро, пауза через P/ESC
+      window.dispatchEvent(new CustomEvent('deepdiver:activateNitro'));
+    } else if (S.state === 'play') {
+      S.paused = !S.paused;
+    } else if (S.state === 'dead') window.dispatchEvent(new CustomEvent('deepdiver:startGame'));
     else if (S.state === 'win')  window.dispatchEvent(new CustomEvent('deepdiver:startGame'));
     else if (S.state === 'levelup') window.dispatchEvent(new CustomEvent('deepdiver:levelUp'));
   }
   if (S.state === 'raceover' && (e.key === ' ' || e.key === 'Enter')) {
     S.state = 'menu'; S.gameMode = 'campaign'; S.raceState = 'idle'; S.raceRoom = null;
-  }
-  if (e.code === 'Space' && S.state === 'play' && S.gameMode === 'race') {
-    window.dispatchEvent(new CustomEvent('deepdiver:activateNitro'));
   }
   if (e.key === ' ') e.preventDefault();
 });
@@ -165,6 +166,10 @@ S.canvas.addEventListener('touchstart', e => {
     const { tx: cx, ty: cy } = getTouchCoords(touch);
     const pb = pauseBtn();
     if (hitBtn(pb, cx, cy)) { S.paused = !S.paused; continue; }
+    if (S.gameMode === 'race') {
+      const nb = nitroBtn();
+      if (hitBtn(nb, cx, cy)) { window.dispatchEvent(new CustomEvent('deepdiver:activateNitro')); continue; }
+    }
     if (S.controlMode === 'joystick') {
       if (!S.joy.active) {
         S.joy.active = true; S.joy.touchId = touch.identifier;
