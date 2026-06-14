@@ -69,17 +69,19 @@ document.addEventListener('keydown', e => {
   if ((e.key === 'p' || e.key === 'P' || e.key === 'Escape') && S.state === 'play') S.paused = !S.paused;
   if (e.key === 'Enter' && S.state === 'dead') { S.state = 'menu'; }
   if (e.key === ' ' || e.code === 'Space') {
-    if (S.state === 'play' && S.gameMode === 'race') {
-      // В гонке Space = нитро, пауза через P/ESC
-      window.dispatchEvent(new CustomEvent('deepdiver:activateNitro'));
-    } else if (S.state === 'play') {
-      S.paused = !S.paused;
-    } else if (S.state === 'dead') window.dispatchEvent(new CustomEvent('deepdiver:startGame'));
+    if (S.state === 'play') S.paused = !S.paused;
+    else if (S.state === 'dead') window.dispatchEvent(new CustomEvent('deepdiver:startGame'));
     else if (S.state === 'win')  window.dispatchEvent(new CustomEvent('deepdiver:startGame'));
     else if (S.state === 'levelup') window.dispatchEvent(new CustomEvent('deepdiver:levelUp'));
   }
   if (S.state === 'raceover' && (e.key === ' ' || e.key === 'Enter')) {
     S.state = 'menu'; S.gameMode = 'campaign'; S.raceState = 'idle'; S.raceRoom = null;
+  }
+  // Нитро — Shift или Enter в гонке
+  if (S.state === 'play' && S.gameMode === 'race') {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'Enter') {
+      window.dispatchEvent(new CustomEvent('deepdiver:activateNitro'));
+    }
   }
   if (e.key === ' ') e.preventDefault();
 });
