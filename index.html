@@ -15,6 +15,9 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://artemisf-create.github.io/deep-diver">
   <link rel="canonical" href="https://artemisf-create.github.io/deep-diver">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="theme-color" content="#0d3d5c">
   <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 
   <!-- Firebase v10 compat (для простоты — глобальный firebase.*) -->
@@ -352,5 +355,12 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 </script>
 
 <script type="module" src="src/main.js?v=3"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/deep-diver/sw.js')
+      .then(() => console.log('[PWA] Service Worker registered'))
+      .catch(e => console.warn('[PWA] SW registration failed:', e));
+  }
+</script>
 </body>
 </html>

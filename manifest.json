@@ -1,0 +1,14 @@
+{
+  "name": "Deep Diver",
+  "short_name": "Deep Diver",
+  "description": "Underwater cave racing game with multiplayer",
+  "start_url": "/deep-diver/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000e1a",
+  "theme_color": "#0d3d5c",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
